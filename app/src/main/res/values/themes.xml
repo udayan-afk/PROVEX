@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="provex_navy">#101827</color>
+    <color name="provex_background">#F5F7FA</color>
+    <style name="Theme.Provex" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/provex_background</item>
+        <item name="android:statusBarColor">@color/provex_navy</item>
+        <item name="android:navigationBarColor">@color/provex_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
