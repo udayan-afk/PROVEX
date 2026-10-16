@@ -21,6 +21,24 @@ import com.provex.app.domain.repository.LearningRepository
 import com.provex.app.domain.repository.ProfileRepository
 import com.provex.app.domain.repository.SettingsRepository
 
+class JobDraftHolder {
+    var draftJobText: String? = null
+    var draftJobUrl: String? = null
+
+    fun consumeDraft(): Pair<String?, String?> {
+        val text = draftJobText
+        val url = draftJobUrl
+        draftJobText = null
+        draftJobUrl = null
+        return Pair(text, url)
+    }
+
+    fun setDraft(text: String, url: String? = null) {
+        draftJobText = text
+        draftJobUrl = url
+    }
+}
+
 interface AppContainer {
     val authRepository: AuthRepository
     val profileRepository: ProfileRepository
@@ -29,9 +47,14 @@ interface AppContainer {
     val learningRepository: LearningRepository
     val insightsRepository: InsightsRepository
     val settingsRepository: SettingsRepository
+    val jobDraftHolder: JobDraftHolder
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
+
+    override val jobDraftHolder: JobDraftHolder by lazy {
+        JobDraftHolder()
+    }
 
     private val database: ProvexDatabase by lazy {
         Room.databaseBuilder(

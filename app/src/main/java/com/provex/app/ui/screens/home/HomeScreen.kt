@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,20 +30,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.provex.app.domain.model.JobAnalysis
+import com.provex.app.domain.model.AuthState
 import com.provex.app.domain.model.RepoConnectionStatus
 import com.provex.app.ui.components.EvidenceStatusBadge
 import com.provex.app.ui.components.NoticeBanner
 import com.provex.app.ui.components.ProvexButton
 import com.provex.app.ui.components.ProvexCard
 import com.provex.app.ui.components.ProvexTextField
-import com.provex.app.ui.components.SampleBadge
 import com.provex.app.ui.theme.DarkGreen
-import com.provex.app.ui.theme.DarkGreenBg
 import com.provex.app.ui.theme.MintGreen
 import com.provex.app.ui.theme.NavyDark
 import com.provex.app.ui.theme.NavyPrimary
-import com.provex.app.ui.theme.SoftBlue
 import com.provex.app.ui.theme.SurfaceAlt
 import com.provex.app.ui.theme.SurfaceWhite
 import com.provex.app.ui.theme.TextMuted
@@ -64,6 +60,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(viewModel) {
+        viewModel.checkDraft()
         viewModel.events.collect { event ->
             when (event) {
                 is HomeEvent.NavigateToExtraction -> onNavigateToExtraction(event.analysisId)
@@ -80,66 +77,207 @@ fun HomeScreen(
         item {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Heading & Subtitle
-            Text(
-                text = "Check your fit for any opportunity",
-                style = MaterialTheme.typography.headlineMedium,
-                color = NavyPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Understand what a job requires and how your skills compare.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextSecondary,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (state.authState is com.provex.app.domain.model.AuthState.Demo) {
-                val demoState = state.authState as com.provex.app.domain.model.AuthState.Demo
-                val label = if (!demoState.name.isNullOrBlank()) {
-                    "Demo Session • ${demoState.name} (Local On-Device)"
-                } else {
-                    "Demo Session (Local On-Device Mode)"
+            // Greeting & Demo Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    val displayName = state.profile.name.trim().ifBlank {
+                        if (state.authState is AuthState.Demo && !(state.authState as AuthState.Demo).name.isNullOrBlank()) {
+                            (state.authState as AuthState.Demo).name!!
+                        } else {
+                            "Engineer"
+                        }
+                    }
+                    Text(
+                        text = "Hello, $displayName 👋",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary,
+                    )
+                    Text(
+                        text = "Turn code into credibility with evidence-based intelligence.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                    )
                 }
-                Surface(
-                    color = NavyDark,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+
+                if (state.authState is AuthState.Demo) {
+                    Surface(
+                        color = NavyDark,
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(MintGreen, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MintGreen,
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(MintGreen, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Demo Mode",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MintGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                ),
+                            )
+                        }
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(14.dp))
+
             if (state.notice != null) {
-                NoticeBanner(text = state.notice!!, isWarning = true, modifier = Modifier.padding(bottom = 12.dp))
+                NoticeBanner(
+                    text = state.notice!!,
+                    isWarning = true,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
             }
+
+            // Entry Point: Career Opportunity Assistant Card
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToOpportunities),
+                color = NavyPrimary,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = NavyDark,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "✦",
+                                color = MintGreen,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Career Opportunity Assistant",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = SurfaceWhite,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                        )
+                        Text(
+                            text = "Find roles that fit your goals & get personalized prep.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MintGreen.copy(alpha = 0.9f),
+                                fontSize = 11.sp,
+                            ),
+                        )
+                    }
+
+                    Text(
+                        text = "Explore →",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = SurfaceWhite,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Primary Feature: "Check your fit" Card
+            ProvexCard {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                text = "Check your fit",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = "Compare job requirements with your skills and code evidence.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = viewModel::loadSampleJob,
+                            modifier = Modifier.height(28.dp),
+                        ) {
+                            Text(
+                                text = "Load sample job",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = NavyPrimary,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                            )
+                        }
+                    }
+
+                    ProvexTextField(
+                        value = state.jobText,
+                        onValueChange = viewModel::onJobTextChanged,
+                        label = "Job or internship description",
+                        placeholder = "Paste the complete requirements section or entire job posting text here...",
+                        minLines = 4,
+                        maxLines = 8,
+                        errorText = state.jobTextError,
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    ProvexTextField(
+                        value = state.jobUrl,
+                        onValueChange = viewModel::onJobUrlChanged,
+                        label = "Job posting link (optional)",
+                        placeholder = "https://company.com/jobs/role-123",
+                        errorText = state.jobUrlError,
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    ProvexButton(
+                        text = "Analyze Opportunity",
+                        onClick = viewModel::onAnalyze,
+                        isLoading = state.isAnalyzing,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Quick Status Strip: Profile + GitHub
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                // Profile summary chip
+                // Profile summary card
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -157,20 +295,20 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (state.profile.isEmpty) "Incomplete"
-                            else state.profile.targetRole.ifBlank { "Profile set" },
-                            style = MaterialTheme.typography.titleMedium,
+                            else state.profile.targetRole.ifBlank { "Profile active" },
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = NavyPrimary,
                             maxLines = 1,
                         )
                         Text(
                             text = "${state.profile.claimedSkills.size} skills claimed",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = TextSecondary,
                         )
                     }
                 }
 
-                // GitHub connection summary
+                // GitHub connection summary card
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -201,79 +339,24 @@ fun HomeScreen(
                                 text = if (state.githubState.status == RepoConnectionStatus.CONNECTED) {
                                     if (state.githubState.isSample) "Demo Repos" else "Connected"
                                 } else "Not connected",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = NavyPrimary,
                                 maxLines = 1,
                             )
                         }
                         Text(
                             text = "${state.githubState.repos.count { it.selected }} repos selected",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = TextSecondary,
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Primary Action Card: Job Description Input
-            ProvexCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "Paste opportunity description",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
-                        )
-                        TextButton(onClick = viewModel::loadSampleJob) {
-                            Text(
-                                text = "Load sample",
-                                style = MaterialTheme.typography.labelSmall.copy(color = NavyPrimary, fontWeight = FontWeight.SemiBold),
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    ProvexTextField(
-                        value = state.jobText,
-                        onValueChange = viewModel::onJobTextChanged,
-                        label = "Job or internship description",
-                        placeholder = "Paste the complete requirements section or entire job posting text here...",
-                        minLines = 5,
-                        maxLines = 10,
-                        errorText = state.jobTextError,
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    ProvexTextField(
-                        value = state.jobUrl,
-                        onValueChange = viewModel::onJobUrlChanged,
-                        label = "Job posting link (optional)",
-                        placeholder = "https://company.com/jobs/role-123",
-                        errorText = state.jobUrlError,
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    ProvexButton(
-                        text = "Analyze Opportunity",
-                        onClick = viewModel::onAnalyze,
-                        isLoading = state.isAnalyzing,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
         }
 
-        // Skills Needing Attention (if any)
+        // Skills Needing Attention
         if (state.attentionSkills.isNotEmpty()) {
             item {
                 Row(
@@ -283,20 +366,20 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "Skills needing attention",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = TextPrimary,
                     )
                     val latest = state.recentAnalyses.firstOrNull()
                     if (latest != null) {
                         TextButton(onClick = { onNavigateToProofPath(latest.id) }) {
                             Text(
-                                text = "View ProofPath",
+                                text = "View ProofPath →",
                                 style = MaterialTheme.typography.labelSmall.copy(color = NavyPrimary),
                             )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
             }
 
             items(state.attentionSkills) { skill ->
@@ -312,13 +395,13 @@ fun HomeScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = skill.skill,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = TextPrimary,
                             )
                             Text(
                                 text = if (skill.inProfile) "Claimed in profile, but unverified in code."
-                                else "Not in profile or analyzed repos.",
-                                style = MaterialTheme.typography.bodySmall,
+                                else "Not found in profile or analyzed repos.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 color = TextSecondary,
                             )
                         }
@@ -328,95 +411,73 @@ fun HomeScreen(
             }
         }
 
-        // Recent Analyses section
-        if (state.recentAnalyses.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Recent analyses",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+        // Recent Analyses Section
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Recent assessments",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
 
+        if (state.recentAnalyses.isNotEmpty()) {
             items(state.recentAnalyses.take(3)) { analysis ->
                 ProvexCard(
                     modifier = Modifier.padding(bottom = 8.dp),
                     onClick = { onNavigateToComparison(analysis.id) },
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = analysis.displayTitle,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = NavyPrimary,
-                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
                             )
-                            Text(
-                                text = "${analysis.requirements.size} requirements",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextSecondary,
-                            )
+                            if (!analysis.company.isNullOrBlank()) {
+                                Text(
+                                    text = analysis.company!!,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = TextSecondary,
+                                )
+                            }
                         }
-                        if (!analysis.company.isNullOrBlank()) {
-                            Text(
-                                text = analysis.company!!,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary,
-                            )
-                        }
+                        Text(
+                            text = "${analysis.requirements.size} reqs →",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = NavyPrimary,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                        )
                     }
                 }
             }
-        }
-
-        // Personalized Opportunity Recommendations (Sample badge enabled)
-        if (state.opportunities.isNotEmpty()) {
+        } else {
             item {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
+                Surface(
+                    color = SurfaceWhite,
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         Text(
-                            text = "Target opportunities",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "No assessments recorded yet",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                             color = TextPrimary,
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        SampleBadge(text = "Sample")
-                    }
-                    TextButton(onClick = onNavigateToOpportunities) {
                         Text(
-                            text = "See all",
-                            style = MaterialTheme.typography.labelSmall.copy(color = NavyPrimary),
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            items(state.opportunities.take(2)) { opp ->
-                ProvexCard(
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    backgroundColor = SurfaceWhite,
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = opp.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = NavyPrimary,
-                        )
-                        Text(
-                            text = "${opp.company} • ${opp.location}",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Paste any job or internship description above to check your code evidence match.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = TextSecondary,
                         )
                     }

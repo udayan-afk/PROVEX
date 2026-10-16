@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,8 @@ import com.provex.app.ui.theme.TextSecondary
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToRepositories: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -257,6 +260,78 @@ fun ProfileScreen(
                 text = if (state.isSaved) "✓ Profile Saved" else "Save Career Profile",
                 onClick = viewModel::saveProfile,
             )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "ACCOUNT & SECONDARY FEATURES",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                ),
+                color = TextSecondary,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToRepositories),
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceWhite,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = "Connected Repositories",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = NavyPrimary,
+                        )
+                        Text(
+                            text = "Manage GitHub account and select code repositories.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    }
+                    Text(text = "⌥", fontSize = 18.sp, color = NavyPrimary)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToSettings),
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceWhite,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = "Settings & Privacy",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = NavyPrimary,
+                        )
+                        Text(
+                            text = "Session state, notifications, and local data controls.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    }
+                    Text(text = "⚙", fontSize = 18.sp, color = NavyPrimary)
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
         }

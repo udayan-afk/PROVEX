@@ -53,6 +53,7 @@ class HomeViewModel(
     private val githubRepository: GithubRepository,
     private val insightsRepository: InsightsRepository,
     private val authRepository: com.provex.app.domain.repository.AuthRepository? = null,
+    private val jobDraftHolder: com.provex.app.di.JobDraftHolder? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -62,6 +63,7 @@ class HomeViewModel(
     val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
 
     init {
+        checkDraft()
         if (authRepository != null) {
             viewModelScope.launch {
                 authRepository.authState.collect { auth ->
@@ -98,6 +100,20 @@ class HomeViewModel(
     private suspend fun updateOpportunities(profile: UserProfile) {
         val samples = insightsRepository.sampleOpportunities(profile)
         _uiState.update { it.copy(opportunities = samples) }
+    }
+
+    fun checkDraft() {
+        val draft = jobDraftHolder?.consumeDraft()
+        if (draft != null && !draft.first.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    jobText = draft.first!!,
+                    jobUrl = draft.second ?: "",
+                    jobTextError = null,
+                    jobUrlError = null,
+                )
+            }
+        }
     }
 
     fun onJobTextChanged(text: String) {

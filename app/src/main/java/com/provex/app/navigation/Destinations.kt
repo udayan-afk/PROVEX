@@ -34,8 +34,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Destination.Home.route, "Home", "⌂"),
+    BottomNavItem(Destination.Opportunities.route, "Opportunities", "✦"),
+    BottomNavItem(Destination.History.route, "Assessments", "⏱"),
     BottomNavItem(Destination.Profile.route, "Profile", "👤"),
-    BottomNavItem(Destination.Repositories.route, "Repos", "⌥"),
-    BottomNavItem(Destination.History.route, "History", "⏱"),
-    BottomNavItem(Destination.Settings.route, "Settings", "⚙"),
 )

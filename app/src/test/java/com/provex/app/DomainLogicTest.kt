@@ -127,4 +127,42 @@ class DomainLogicTest {
         assertNotNull(Validators.jobTextError("too short"))
         assertNull(Validators.jobTextError("This is a sufficiently long job description text to satisfy validation requirements."))
     }
+
+    @Test
+    fun testCareerOpportunityEngine_personalizesGuidanceBasedOnProfile() {
+        val profile = UserProfile(
+            name = "Alex",
+            targetRole = "Android Developer Intern",
+            skills = listOf("Kotlin", "Git"),
+            location = "Chicago, IL",
+            workMode = com.provex.app.domain.model.WorkMode.HYBRID,
+        )
+
+        val guidance = com.provex.app.domain.usecase.CareerOpportunityEngine.generateGuidance(
+            query = "Android Developer Intern",
+            profile = profile,
+        )
+
+        assertTrue(guidance.matchedProfileSkills.contains("Kotlin"))
+        assertTrue(guidance.matchedProfileSkills.contains("Git"))
+        assertTrue(guidance.skillsToStrengthen.contains("Jetpack Compose"))
+        assertTrue(guidance.opportunityCards.isNotEmpty())
+        assertFalse(guidance.opportunityCards.any { it.isLiveVacancy })
+        assertTrue(guidance.opportunityCards.all { it.workMode?.contains("Hybrid") == true })
+    }
+
+    @Test
+    fun testCareerOpportunityEngine_handlesCustomRoleGracefully() {
+        val emptyProfile = UserProfile()
+        val guidance = com.provex.app.domain.usecase.CareerOpportunityEngine.generateGuidance(
+            query = "Quantum Computing Specialist",
+            profile = emptyProfile,
+        )
+
+        assertNotNull(guidance)
+        assertEquals("Quantum Computing Specialist", guidance.roleQuery)
+        assertTrue(guidance.opportunityCards.isNotEmpty())
+        assertFalse(guidance.opportunityCards.first().isLiveVacancy)
+        assertNotNull(guidance.profileMissingPrompt)
+    }
 }

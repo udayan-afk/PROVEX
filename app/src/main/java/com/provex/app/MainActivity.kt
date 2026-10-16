@@ -106,10 +106,9 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
 
     val showBottomBar = currentRoute in listOf(
         Destination.Home.route,
-        Destination.Profile.route,
-        Destination.Repositories.route,
+        Destination.Opportunities.route,
         Destination.History.route,
-        Destination.Settings.route,
+        Destination.Profile.route,
     )
 
     val unauthenticatedRoutes = setOf(
@@ -131,6 +130,15 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                                 color = SurfaceWhite,
                             ),
                         )
+                    },
+                    actions = {
+                        IconButton(onClick = { navController.navigate(Destination.Settings.route) }) {
+                            Text(
+                                text = "⚙",
+                                fontSize = 18.sp,
+                                color = SurfaceWhite,
+                            )
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = NavyPrimary,
@@ -251,6 +259,7 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                         githubRepository = container.githubRepository,
                         insightsRepository = container.insightsRepository,
                         authRepository = container.authRepository,
+                        jobDraftHolder = container.jobDraftHolder,
                     )
                 }
                 HomeScreen(
@@ -266,7 +275,11 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
 
             composable(Destination.Profile.route) {
                 val vm = viewModel { ProfileViewModel(container.profileRepository) }
-                ProfileScreen(viewModel = vm)
+                ProfileScreen(
+                    viewModel = vm,
+                    onNavigateToSettings = { navController.navigate(Destination.Settings.route) },
+                    onNavigateToRepositories = { navController.navigate(Destination.Repositories.route) },
+                )
             }
 
             composable(Destination.Repositories.route) {
@@ -380,12 +393,20 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                 val vm = viewModel {
                     OpportunitiesViewModel(
                         profileRepository = container.profileRepository,
-                        insightsRepository = container.insightsRepository,
+                        jobDraftHolder = container.jobDraftHolder,
                     )
                 }
                 OpportunitiesScreen(
                     viewModel = vm,
-                    onBack = { navController.popBackStack() },
+                    onNavigateToHome = {
+                        navController.navigate(Destination.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToProfile = { navController.navigate(Destination.Profile.route) },
                 )
             }
 
