@@ -63,8 +63,10 @@ class AuthRepositoryImpl(
     private val prefs: PreferencesStore,
     private val api: ProvexApi?,
     private val tokens: SessionTokenHolder,
+    private val profileRepo: ProfileRepository,
 ) : AuthRepository {
     override val authState: Flow<AuthState> = prefs.authState
+    override val rememberMe: Flow<Boolean> = prefs.rememberMe
     override val backendConfigured: Boolean get() = api != null
 
     private val notConfigured = Result.failure<Unit>(
@@ -74,16 +76,19 @@ class AuthRepositoryImpl(
         )
     )
 
-    override suspend fun signIn(email: String, password: String): Result<Unit> = authenticate(email, password, register = false)
-    override suspend fun register(email: String, password: String): Result<Unit> = authenticate(email, password, register = true)
+    override suspend fun signIn(email: String, password: String, rememberMe: Boolean): Result<Unit> =
+        authenticate(email, password, register = false, rememberMe = rememberMe)
 
-    private suspend fun authenticate(email: String, password: String, register: Boolean): Result<Unit> {
+    override suspend fun register(email: String, password: String): Result<Unit> =
+        authenticate(email, password, register = true, rememberMe = true)
+
+    private suspend fun authenticate(email: String, password: String, register: Boolean, rememberMe: Boolean): Result<Unit> {
         val api = api ?: return notConfigured
         return try {
             val body = CredentialsDto(email.trim(), password)
             val res = if (register) api.register(body) else api.login(body)
             tokens.token = res.accessToken
-            prefs.setAccount(res.email ?: email.trim())
+            prefs.setAccount(res.email ?: email.trim(), remember = rememberMe)
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
@@ -92,7 +97,19 @@ class AuthRepositoryImpl(
         }
     }
 
-    override suspend fun enterDemoMode() = prefs.setDemoMode().let { }
+    override suspend fun enterDemoMode(name: String?, email: String?) {
+        prefs.setDemoMode(name, email)
+        if (!name.isNullOrBlank()) {
+            val current = profileRepo.profile.first()
+            if (current.name.isBlank()) {
+                profileRepo.save(current.copy(name = name.trim()))
+            }
+        }
+    }
+
+    override suspend fun setRememberMe(remember: Boolean) {
+        prefs.setRememberMe(remember)
+    }
 
     override suspend fun signOut() {
         tokens.token = null

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -150,14 +152,19 @@ fun ProvexTextField(
     maxLines: Int = 1,
     errorText: String? = null,
     enabled: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    trailingIcon: @Composable (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-            color = TextPrimary,
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                color = TextPrimary,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -170,6 +177,9 @@ fun ProvexTextField(
             maxLines = maxLines,
             isError = errorText != null,
             enabled = enabled,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            trailingIcon = trailingIcon,
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(

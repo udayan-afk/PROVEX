@@ -38,7 +38,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             context.applicationContext,
             ProvexDatabase::class.java,
             "provex.db",
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
     }
 
     private val preferencesStore: PreferencesStore by lazy {
@@ -51,12 +51,12 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         NetworkModule.createApi(tokenHolder)
     }
 
-    override val authRepository: AuthRepository by lazy {
-        AuthRepositoryImpl(preferencesStore, api, tokenHolder)
-    }
-
     override val profileRepository: ProfileRepository by lazy {
         ProfileRepositoryImpl(database.profileDao())
+    }
+
+    override val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(preferencesStore, api, tokenHolder, profileRepository)
     }
 
     override val analysisRepository: AnalysisRepository by lazy {

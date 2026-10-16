@@ -40,6 +40,7 @@ data class HomeUiState(
     val attentionSkills: List<SkillAssessment> = emptyList(),
     val opportunities: List<Opportunity> = emptyList(),
     val notice: String? = null,
+    val authState: com.provex.app.domain.model.AuthState = com.provex.app.domain.model.AuthState.SignedOut,
 )
 
 sealed interface HomeEvent {
@@ -51,6 +52,7 @@ class HomeViewModel(
     private val profileRepository: ProfileRepository,
     private val githubRepository: GithubRepository,
     private val insightsRepository: InsightsRepository,
+    private val authRepository: com.provex.app.domain.repository.AuthRepository? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -60,6 +62,13 @@ class HomeViewModel(
     val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
 
     init {
+        if (authRepository != null) {
+            viewModelScope.launch {
+                authRepository.authState.collect { auth ->
+                    _uiState.update { it.copy(authState = auth) }
+                }
+            }
+        }
         viewModelScope.launch {
             profileRepository.profile.collect { p ->
                 _uiState.update { it.copy(profile = p) }

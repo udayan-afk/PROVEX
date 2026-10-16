@@ -43,8 +43,12 @@ import com.provex.app.navigation.Destination
 import com.provex.app.navigation.bottomNavItems
 import com.provex.app.ui.screens.assessment.ComparisonScreen
 import com.provex.app.ui.screens.assessment.ComparisonViewModel
-import com.provex.app.ui.screens.auth.AuthScreen
-import com.provex.app.ui.screens.auth.AuthViewModel
+import com.provex.app.ui.screens.auth.LoginScreen
+import com.provex.app.ui.screens.auth.LoginViewModel
+import com.provex.app.ui.screens.auth.RegisterScreen
+import com.provex.app.ui.screens.auth.RegisterViewModel
+import com.provex.app.ui.screens.splash.SplashScreen
+import com.provex.app.ui.screens.splash.SplashViewModel
 import com.provex.app.ui.screens.evidence.EvidenceDetailScreen
 import com.provex.app.ui.screens.evidence.EvidenceDetailViewModel
 import com.provex.app.ui.screens.history.HistoryScreen
@@ -108,9 +112,15 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
         Destination.Settings.route,
     )
 
+    val unauthenticatedRoutes = setOf(
+        Destination.Splash.route,
+        Destination.Login.route,
+        Destination.Register.route,
+    )
+
     Scaffold(
         topBar = {
-            if (currentRoute != Destination.Auth.route) {
+            if (currentRoute !in unauthenticatedRoutes) {
                 TopAppBar(
                     title = {
                         Text(
@@ -177,22 +187,61 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Destination.Home.route,
+            startDestination = Destination.Splash.route,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            composable(Destination.Auth.route) {
-                val vm = viewModel { AuthViewModel(container.authRepository) }
-                AuthScreen(
+            composable(Destination.Splash.route) {
+                val vm = viewModel { SplashViewModel(container.authRepository) }
+                SplashScreen(
                     viewModel = vm,
-                    onAuthSuccess = {
+                    onNavigateToHome = {
                         navController.navigate(Destination.Home.route) {
-                            popUpTo(Destination.Auth.route) { inclusive = true }
+                            popUpTo(Destination.Splash.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate(Destination.Login.route) {
+                            popUpTo(Destination.Splash.route) { inclusive = true }
                         }
                     },
                 )
             }
+
+            composable(Destination.Login.route) {
+                val vm = viewModel { LoginViewModel(container.authRepository) }
+                LoginScreen(
+                    viewModel = vm,
+                    onNavigateToHome = {
+                        navController.navigate(Destination.Home.route) {
+                            popUpTo(Destination.Login.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(Destination.Register.route)
+                    },
+                )
+            }
+
+            composable(Destination.Register.route) {
+                val vm = viewModel { RegisterViewModel(container.authRepository) }
+                RegisterScreen(
+                    viewModel = vm,
+                    onNavigateToHome = {
+                        navController.navigate(Destination.Home.route) {
+                            popUpTo(Destination.Register.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate(Destination.Login.route) {
+                            popUpTo(Destination.Register.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+
+
 
             composable(Destination.Home.route) {
                 val vm = viewModel {
@@ -201,6 +250,7 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                         profileRepository = container.profileRepository,
                         githubRepository = container.githubRepository,
                         insightsRepository = container.insightsRepository,
+                        authRepository = container.authRepository,
                     )
                 }
                 HomeScreen(
@@ -352,7 +402,7 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                     onNavigateToProfile = { navController.navigate(Destination.Profile.route) },
                     onNavigateToRepositories = { navController.navigate(Destination.Repositories.route) },
                     onSignOut = {
-                        navController.navigate(Destination.Auth.route) {
+                        navController.navigate(Destination.Login.route) {
                             popUpTo(0) { inclusive = true }
                         }
                     },

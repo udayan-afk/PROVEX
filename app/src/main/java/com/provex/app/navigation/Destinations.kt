@@ -1,7 +1,9 @@
 package com.provex.app.navigation
 
 sealed class Destination(val route: String) {
-    data object Auth : Destination("auth")
+    data object Splash : Destination("splash")
+    data object Login : Destination("login")
+    data object Register : Destination("register")
     data object Home : Destination("home")
     data object Profile : Destination("profile")
     data object Repositories : Destination("repositories")

@@ -22,6 +22,9 @@ class PreferencesStore(private val context: Context) {
     private object Keys {
         val authMode = stringPreferencesKey("auth_mode") // "demo" | "account"
         val accountEmail = stringPreferencesKey("account_email")
+        val demoName = stringPreferencesKey("demo_name")
+        val demoEmail = stringPreferencesKey("demo_email")
+        val rememberMe = booleanPreferencesKey("remember_me")
         val notifyProofLoop = booleanPreferencesKey("notify_proofloop")
         val notifyLearning = booleanPreferencesKey("notify_learning")
         val sampleRepos = booleanPreferencesKey("sample_repos")
@@ -35,11 +38,12 @@ class PreferencesStore(private val context: Context) {
 
     val authState: Flow<AuthState> = data.map {
         when (it[Keys.authMode]) {
-            "demo" -> AuthState.Demo
+            "demo" -> AuthState.Demo(it[Keys.demoName], it[Keys.demoEmail])
             "account" -> AuthState.Account(it[Keys.accountEmail].orEmpty())
             else -> AuthState.SignedOut
         }
     }
+    val rememberMe: Flow<Boolean> = data.map { it[Keys.rememberMe] ?: true }
     val notifyProofLoop: Flow<Boolean> = data.map { it[Keys.notifyProofLoop] ?: false }
     val notifyLearning: Flow<Boolean> = data.map { it[Keys.notifyLearning] ?: false }
     val sampleRepos: Flow<Boolean> = data.map { it[Keys.sampleRepos] ?: false }
@@ -47,19 +51,28 @@ class PreferencesStore(private val context: Context) {
     val selectedRepos: Flow<Set<String>> = data.map { it[Keys.selectedRepos].orEmpty() }
     val completedCriteria: Flow<Set<String>> = data.map { it[Keys.completedCriteria].orEmpty() }
 
-    suspend fun setDemoMode() = context.dataStore.edit {
+    suspend fun setDemoMode(name: String? = null, email: String? = null) = context.dataStore.edit {
         it[Keys.authMode] = "demo"
+        if (name != null) it[Keys.demoName] = name else it.remove(Keys.demoName)
+        if (email != null) it[Keys.demoEmail] = email else it.remove(Keys.demoEmail)
         it.remove(Keys.accountEmail)
     }
 
-    suspend fun setAccount(email: String) = context.dataStore.edit {
+    suspend fun setAccount(email: String, remember: Boolean = true) = context.dataStore.edit {
         it[Keys.authMode] = "account"
         it[Keys.accountEmail] = email
+        it[Keys.rememberMe] = remember
+    }
+
+    suspend fun setRememberMe(remember: Boolean) = context.dataStore.edit {
+        it[Keys.rememberMe] = remember
     }
 
     suspend fun clearAuth() = context.dataStore.edit {
         it.remove(Keys.authMode)
         it.remove(Keys.accountEmail)
+        it.remove(Keys.demoName)
+        it.remove(Keys.demoEmail)
     }
 
     suspend fun setNotifyProofLoop(v: Boolean) = context.dataStore.edit { it[Keys.notifyProofLoop] = v }

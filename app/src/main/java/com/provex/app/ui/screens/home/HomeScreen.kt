@@ -95,6 +95,41 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            if (state.authState is com.provex.app.domain.model.AuthState.Demo) {
+                val demoState = state.authState as com.provex.app.domain.model.AuthState.Demo
+                val label = if (!demoState.name.isNullOrBlank()) {
+                    "Demo Session • ${demoState.name} (Local On-Device)"
+                } else {
+                    "Demo Session (Local On-Device Mode)"
+                }
+                Surface(
+                    color = NavyDark,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(MintGreen, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = MintGreen,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
+            }
+
             if (state.notice != null) {
                 NoticeBanner(text = state.notice!!, isWarning = true, modifier = Modifier.padding(bottom = 12.dp))
             }

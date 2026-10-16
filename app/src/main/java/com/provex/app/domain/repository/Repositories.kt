@@ -20,11 +20,13 @@ interface ProfileRepository {
 
 interface AuthRepository {
     val authState: Flow<AuthState>
+    val rememberMe: Flow<Boolean>
     /** False when this build has no backend URL; account auth is then unavailable. */
     val backendConfigured: Boolean
-    suspend fun signIn(email: String, password: String): Result<Unit>
+    suspend fun signIn(email: String, password: String, rememberMe: Boolean = true): Result<Unit>
     suspend fun register(email: String, password: String): Result<Unit>
-    suspend fun enterDemoMode()
+    suspend fun enterDemoMode(name: String? = null, email: String? = null)
+    suspend fun setRememberMe(remember: Boolean)
     suspend fun signOut()
 }
 

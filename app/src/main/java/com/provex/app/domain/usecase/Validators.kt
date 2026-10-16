@@ -19,6 +19,23 @@ object Validators {
         else -> null
     }
 
+    fun loginPasswordError(password: String): String? = when {
+        password.isEmpty() -> "Enter your password."
+        else -> null
+    }
+
+    fun nameError(name: String): String? = when {
+        name.isBlank() -> "Enter your full name."
+        name.trim().length < 2 -> "Name must be at least 2 characters."
+        else -> null
+    }
+
+    fun confirmPasswordError(password: String, confirm: String): String? = when {
+        confirm.isEmpty() -> "Confirm your password."
+        confirm != password -> "Passwords do not match."
+        else -> null
+    }
+
     fun jobTextError(text: String): String? = when {
         text.isBlank() -> "Paste a job or internship description to analyze."
         text.trim().length < MIN_JOB_TEXT ->

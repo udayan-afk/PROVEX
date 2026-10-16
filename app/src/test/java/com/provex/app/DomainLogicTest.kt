@@ -113,6 +113,17 @@ class DomainLogicTest {
         assertNotNull(Validators.passwordError("short"))
         assertNull(Validators.passwordError("securepassword123"))
 
+        assertNotNull(Validators.loginPasswordError(""))
+        assertNull(Validators.loginPasswordError("anypassword"))
+
+        assertNotNull(Validators.nameError(""))
+        assertNotNull(Validators.nameError("A"))
+        assertNull(Validators.nameError("Alex Chen"))
+
+        assertNotNull(Validators.confirmPasswordError("securePass123", ""))
+        assertNotNull(Validators.confirmPasswordError("securePass123", "mismatchPass"))
+        assertNull(Validators.confirmPasswordError("securePass123", "securePass123"))
+
         assertNotNull(Validators.jobTextError("too short"))
         assertNull(Validators.jobTextError("This is a sufficiently long job description text to satisfy validation requirements."))
     }

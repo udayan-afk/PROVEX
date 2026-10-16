@@ -98,6 +98,6 @@ data class Opportunity(
 
 sealed interface AuthState {
     data object SignedOut : AuthState
-    data object Demo : AuthState
+    data class Demo(val name: String? = null, val email: String? = null) : AuthState
     data class Account(val email: String) : AuthState
 }
