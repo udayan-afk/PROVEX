@@ -69,7 +69,7 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, generalError = null) }
             val result = if (current.isRegistering) {
-                authRepository.register(current.email, current.password)
+                authRepository.register(current.email.substringBefore('@'), current.email, current.password)
             } else {
                 authRepository.signIn(current.email, current.password)
             }

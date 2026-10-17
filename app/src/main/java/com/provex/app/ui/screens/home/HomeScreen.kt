@@ -55,7 +55,8 @@ fun HomeScreen(
     onNavigateToRepositories: () -> Unit,
     onNavigateToComparison: (String) -> Unit,
     onNavigateToProofPath: (String) -> Unit,
-    onNavigateToOpportunities: () -> Unit,
+    onNavigateToOpportunities: () -> Unit = {},
+    onNavigateToRoleAdvisor: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -141,64 +142,7 @@ fun HomeScreen(
                 )
             }
 
-            // Entry Point: Career Opportunity Assistant Card
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onNavigateToOpportunities),
-                color = NavyPrimary,
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        color = NavyDark,
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "✦",
-                                color = MintGreen,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Career Opportunity Assistant",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = SurfaceWhite,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                        )
-                        Text(
-                            text = "Find roles that fit your goals & get personalized prep.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MintGreen.copy(alpha = 0.9f),
-                                fontSize = 11.sp,
-                            ),
-                        )
-                    }
-
-                    Text(
-                        text = "Explore →",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = SurfaceWhite,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Primary Feature: "Check your fit" Card
+            // Primary Feature: "Check your fit" Card (Front and Center)
             ProvexCard {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -220,7 +164,7 @@ fun HomeScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -350,6 +294,54 @@ fun HomeScreen(
                             color = TextSecondary,
                         )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Compact Role Advisor Card
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToRoleAdvisor),
+                color = NavyDark,
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MintGreen.copy(alpha = 0.2f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "✦",
+                        color = MintGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Role Advisor",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = SurfaceWhite,
+                            ),
+                        )
+                        Text(
+                            text = "Find roles matching your code and prepare targeted proof.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MintGreen.copy(alpha = 0.85f),
+                                fontSize = 11.sp,
+                            ),
+                        )
+                    }
+                    Text(
+                        text = "Ask Advisor →",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = SurfaceWhite,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
                 }
             }
 
@@ -486,7 +478,7 @@ fun HomeScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(88.dp))
         }
     }
 }

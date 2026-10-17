@@ -108,7 +108,7 @@ class RegisterViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, generalError = null) }
-            val result = authRepository.register(current.email, current.password)
+            val result = authRepository.register(current.fullName, current.email, current.password)
             result.fold(
                 onSuccess = {
                     _uiState.update { it.copy(isLoading = false) }

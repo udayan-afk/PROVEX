@@ -20,6 +20,7 @@ data class RepositoriesUiState(
         message = null,
     ),
     val isConnecting: Boolean = false,
+    val isDisconnecting: Boolean = false,
     val authUrlToLaunch: String? = null,
     val feedbackMessage: String? = null,
 )
@@ -55,6 +56,32 @@ class RepositoriesViewModel(
                         )
                     }
                 },
+            )
+        }
+    }
+
+    fun onRefresh() {
+        viewModelScope.launch {
+            githubRepository.refresh()
+        }
+    }
+
+    fun onDisconnect() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDisconnecting = true, feedbackMessage = null) }
+            val result = githubRepository.disconnect()
+            result.fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isDisconnecting = false) }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isDisconnecting = false,
+                            feedbackMessage = err.message ?: "Failed to disconnect GitHub.",
+                        )
+                    }
+                }
             )
         }
     }

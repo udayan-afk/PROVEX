@@ -75,6 +75,7 @@ fun OpportunitiesScreen(
     viewModel: OpportunitiesViewModel,
     onNavigateToHome: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onBack: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -110,18 +111,36 @@ fun OpportunitiesScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                IconButton(onClick = onBack) {
                     Text(
-                        text = "Career Opportunity Assistant",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        text = "←",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
                         color = NavyPrimary,
                     )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Role Advisor",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = NavyPrimary,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(MintGreen, CircleShape)
+                        )
+                    }
                     Text(
-                        text = "Find roles that fit your goals.",
+                        text = "Find roles by your code",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                     )

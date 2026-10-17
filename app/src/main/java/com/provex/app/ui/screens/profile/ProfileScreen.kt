@@ -26,6 +26,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.provex.app.R
+import com.provex.app.domain.model.RepoConnectionStatus
 import com.provex.app.domain.model.WorkMode
 import com.provex.app.domain.usecase.SkillCatalog
 import com.provex.app.ui.components.NoticeBanner
@@ -39,6 +56,7 @@ import com.provex.app.ui.theme.NavyPrimary
 import com.provex.app.ui.theme.SoftBlue
 import com.provex.app.ui.theme.SurfaceAlt
 import com.provex.app.ui.theme.SurfaceWhite
+import com.provex.app.ui.theme.TextMuted
 import com.provex.app.ui.theme.TextPrimary
 import com.provex.app.ui.theme.TextSecondary
 
@@ -50,6 +68,53 @@ fun ProfileScreen(
     onNavigateToRepositories: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var showDisconnectDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.githubAuthUrlToLaunch) {
+        state.githubAuthUrlToLaunch?.let { url ->
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+            viewModel.clearGithubAuthUrl()
+        }
+    }
+
+    if (showDisconnectDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisconnectDialog = false },
+            title = {
+                Text(
+                    text = "Disconnect GitHub?",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary,
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to disconnect @${state.githubState.accountLogin ?: "GitHub"}? Your stored credentials will be securely revoked and removed from the server.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDisconnectDialog = false
+                        viewModel.onDisconnectGithub()
+                    }
+                ) {
+                    Text("Disconnect", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDisconnectDialog = false }
+                ) {
+                    Text("Cancel", color = NavyPrimary)
+                }
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -76,6 +141,171 @@ fun ProfileScreen(
                 text = "Important: Profile skills are self-reported claims. " +
                     "PROVEX never treats self-selected skills as verified until supported by analyzed code evidence.",
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // GitHub Connection Card
+            ProvexCard {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = NavyPrimary,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_github),
+                                        contentDescription = "GitHub",
+                                        tint = SurfaceWhite,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "GitHub Account",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = TextPrimary,
+                                )
+                                Text(
+                                    text = when (state.githubState.status) {
+                                        RepoConnectionStatus.CONNECTED -> "Connected as @${state.githubState.accountLogin ?: "user"}"
+                                        RepoConnectionStatus.CONNECTING -> "Connecting..."
+                                        RepoConnectionStatus.ERROR -> "Connection Error"
+                                        RepoConnectionStatus.NOT_CONNECTED -> "Not connected"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = when (state.githubState.status) {
+                                        RepoConnectionStatus.CONNECTED -> DarkGreen
+                                        RepoConnectionStatus.ERROR -> MaterialTheme.colorScheme.error
+                                        else -> TextSecondary
+                                    },
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = when (state.githubState.status) {
+                                RepoConnectionStatus.CONNECTED -> DarkGreenBg
+                                RepoConnectionStatus.ERROR -> MaterialTheme.colorScheme.errorContainer
+                                else -> SurfaceAlt
+                            },
+                        ) {
+                            Text(
+                                text = when (state.githubState.status) {
+                                    RepoConnectionStatus.CONNECTED -> "Active"
+                                    RepoConnectionStatus.CONNECTING -> "Pending"
+                                    RepoConnectionStatus.ERROR -> "Error"
+                                    RepoConnectionStatus.NOT_CONNECTED -> "Disconnected"
+                                },
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                color = when (state.githubState.status) {
+                                    RepoConnectionStatus.CONNECTED -> DarkGreen
+                                    RepoConnectionStatus.ERROR -> MaterialTheme.colorScheme.error
+                                    else -> TextSecondary
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+
+                    if (state.githubActionMessage != null || state.githubState.message != null) {
+                        val msg = state.githubActionMessage ?: state.githubState.message.orEmpty()
+                        if (msg.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            NoticeBanner(
+                                text = msg,
+                                isWarning = state.githubState.status == RepoConnectionStatus.ERROR,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    when (state.githubState.status) {
+                        RepoConnectionStatus.CONNECTED -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ProvexButton(
+                                    text = "View Connected Repositories (${state.githubState.repos.size})",
+                                    onClick = onNavigateToRepositories,
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    ProvexButton(
+                                        text = "Refresh",
+                                        onClick = viewModel::onRefreshGithub,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    ProvexButton(
+                                        text = "Disconnect",
+                                        onClick = { showDisconnectDialog = true },
+                                        modifier = Modifier.weight(1f),
+                                        isLoading = state.isDisconnectingGithub,
+                                    )
+                                }
+                            }
+                        }
+                        RepoConnectionStatus.CONNECTING -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = NavyPrimary,
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Authorizing with GitHub...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary,
+                                )
+                            }
+                        }
+                        RepoConnectionStatus.ERROR -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ProvexButton(
+                                    text = "Retry Connection",
+                                    onClick = viewModel::onConnectGithub,
+                                    isLoading = state.isConnectingGithub,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                ProvexButton(
+                                    text = "Refresh",
+                                    onClick = viewModel::onRefreshGithub,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        RepoConnectionStatus.NOT_CONNECTED -> {
+                            ProvexButton(
+                                text = "Connect GitHub",
+                                onClick = viewModel::onConnectGithub,
+                                isLoading = state.isConnectingGithub,
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -254,11 +484,27 @@ fun ProfileScreen(
                 }
             }
 
+            if (state.errorMessage != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                NoticeBanner(
+                    text = state.errorMessage!!,
+                    isWarning = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                com.provex.app.ui.components.ProvexSecondaryButton(
+                    text = "Retry Sync with Server",
+                    onClick = viewModel::syncProfile,
+                    enabled = !state.isSyncing,
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             ProvexButton(
                 text = if (state.isSaved) "✓ Profile Saved" else "Save Career Profile",
                 onClick = viewModel::saveProfile,
+                isLoading = state.isLoading,
+                enabled = !state.isLoading,
             )
 
             Spacer(modifier = Modifier.height(28.dp))

@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 enum class RepoConnectionStatus(val label: String) {
     NOT_CONNECTED("Not connected"),
+    CONNECTING("Connecting"),
     CONNECTED("Connected"),
     ERROR("Connection problem"),
 }
@@ -15,6 +16,13 @@ data class GithubRepo(
     val lastAnalyzedRevision: String?,
     val selected: Boolean,
     val isSample: Boolean,
+    val name: String = fullName.substringAfterLast('/'),
+    val owner: String = fullName.substringBefore('/', ""),
+    val description: String? = null,
+    val isPrivate: Boolean = false,
+    val htmlUrl: String? = null,
+    val defaultBranch: String? = "main",
+    val updatedAt: String? = null,
 )
 
 data class GithubState(

@@ -5,6 +5,7 @@ sealed class Destination(val route: String) {
     data object Login : Destination("login")
     data object Register : Destination("register")
     data object Home : Destination("home")
+    data object Explore : Destination("explore")
     data object Profile : Destination("profile")
     data object Repositories : Destination("repositories")
     data object Extraction : Destination("extraction/{analysisId}") {
@@ -22,6 +23,7 @@ sealed class Destination(val route: String) {
     }
     data object ProofLoop : Destination("proofloop")
     data object History : Destination("history")
+    data object RoleAdvisor : Destination("role_advisor")
     data object Opportunities : Destination("opportunities")
     data object Settings : Destination("settings")
 }
@@ -34,7 +36,7 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Destination.Home.route, "Home", "⌂"),
-    BottomNavItem(Destination.Opportunities.route, "Opportunities", "✦"),
+    BottomNavItem(Destination.Explore.route, "Explore", "🔍"),
     BottomNavItem(Destination.History.route, "Assessments", "⏱"),
     BottomNavItem(Destination.Profile.route, "Profile", "👤"),
 )

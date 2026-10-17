@@ -22,18 +22,23 @@ import com.provex.app.domain.repository.SettingsRepository
 import com.provex.app.domain.usecase.LearningPlanBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 
 class GithubRepositoryImpl(
     private val prefs: PreferencesStore,
     private val api: ProvexApi?,
 ) : GithubRepository {
 
+    private val refreshTrigger = MutableStateFlow(0)
+
     override val state: Flow<GithubState> = combine(
         prefs.sampleRepos,
         prefs.selectedRepos,
-    ) { sampleEnabled, selected ->
+        refreshTrigger,
+    ) { sampleEnabled, selected, _ ->
         when {
             api == null -> {
                 if (sampleEnabled) {
@@ -56,14 +61,39 @@ class GithubRepositoryImpl(
             }
             else -> {
                 try {
-                    val remoteRepos = api.getRepositories().map { it.toDomain(it.id in selected) }
-                    GithubState(
-                        status = RepoConnectionStatus.CONNECTED,
-                        accountLogin = "Connected via backend",
-                        repos = remoteRepos,
-                        isSample = false,
-                        message = null,
-                    )
+                    val status = api.getGithubStatus()
+                    if (status.connected) {
+                        val remoteRepos = try {
+                            api.getRepositories().map { it.toDomain(it.id.toString() in selected) }
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
+                        GithubState(
+                            status = RepoConnectionStatus.CONNECTED,
+                            accountLogin = status.githubUsername ?: "Connected user",
+                            repos = remoteRepos,
+                            isSample = false,
+                            message = null,
+                        )
+                    } else {
+                        if (sampleEnabled) {
+                            GithubState(
+                                status = RepoConnectionStatus.CONNECTED,
+                                accountLogin = "sample-user (demo preview)",
+                                repos = SampleData.repositories(selected),
+                                isSample = true,
+                                message = "Showing illustrative repositories. No live GitHub account is connected.",
+                            )
+                        } else {
+                            GithubState(
+                                status = RepoConnectionStatus.NOT_CONNECTED,
+                                accountLogin = null,
+                                repos = emptyList(),
+                                isSample = false,
+                                message = null,
+                            )
+                        }
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -72,7 +102,7 @@ class GithubRepositoryImpl(
                         accountLogin = null,
                         repos = emptyList(),
                         isSample = false,
-                        message = "Could not load repositories: ${e.userMessage()}",
+                        message = "Could not load GitHub connection: ${e.userMessage()}",
                     )
                 }
             }
@@ -80,7 +110,7 @@ class GithubRepositoryImpl(
     }
 
     override suspend fun refresh() {
-        // State updates reactively through StateFlow / Flows
+        refreshTrigger.update { it + 1 }
     }
 
     override suspend fun beginAuthorization(): Result<String> {
@@ -93,6 +123,21 @@ class GithubRepositoryImpl(
         return try {
             val response = api.beginGithubAuthorization()
             Result.success(response.authorizationUrl)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException(e.userMessage()))
+        }
+    }
+
+    override suspend fun disconnect(): Result<Unit> {
+        val api = api ?: return Result.failure(
+            IllegalStateException("PROVEX backend not configured.")
+        )
+        return try {
+            api.disconnectGithub()
+            refresh()
+            Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

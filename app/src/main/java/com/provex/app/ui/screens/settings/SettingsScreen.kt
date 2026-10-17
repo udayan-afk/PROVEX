@@ -107,6 +107,7 @@ fun SettingsScreen(
                     Text(
                         text = when (state.githubState.status) {
                             RepoConnectionStatus.CONNECTED -> if (state.githubState.isSample) "Demo Repositories Enabled" else "Connected"
+                            RepoConnectionStatus.CONNECTING -> "Connecting..."
                             RepoConnectionStatus.NOT_CONNECTED -> "No GitHub account connected"
                             RepoConnectionStatus.ERROR -> "Connection Error"
                         },

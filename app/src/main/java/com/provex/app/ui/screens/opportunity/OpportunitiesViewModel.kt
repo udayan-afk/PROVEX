@@ -51,7 +51,26 @@ class OpportunitiesViewModel(
     init {
         viewModelScope.launch {
             profileRepository.profile.collect { p ->
-                _uiState.update { it.copy(profile = p) }
+                val basePrompts = mutableListOf<String>()
+                if (p.targetRole.isNotBlank()) {
+                    basePrompts.add("Roles for ${p.targetRole}")
+                }
+                if (p.claimedSkills.isNotEmpty()) {
+                    val topSkills = p.claimedSkills.take(2).joinToString(" & ")
+                    basePrompts.add("Roles using $topSkills")
+                }
+                basePrompts.addAll(listOf(
+                    "Android Developer Intern",
+                    "Python Backend Developer",
+                    "AI/ML Engineer",
+                ))
+
+                _uiState.update {
+                    it.copy(
+                        profile = p,
+                        suggestedPrompts = basePrompts.distinct(),
+                    )
+                }
             }
         }
     }

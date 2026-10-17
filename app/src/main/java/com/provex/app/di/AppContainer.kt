@@ -68,6 +68,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         PreferencesStore(context.applicationContext)
     }
 
+    private val secureSessionStorage: com.provex.app.data.local.SecureSessionStorage by lazy {
+        com.provex.app.data.local.SecureSessionStorage(context.applicationContext)
+    }
+
     private val tokenHolder = SessionTokenHolder()
 
     private val api by lazy {
@@ -75,11 +79,20 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val profileRepository: ProfileRepository by lazy {
-        ProfileRepositoryImpl(database.profileDao())
+        ProfileRepositoryImpl(
+            dao = database.profileDao(),
+            apiProvider = { api },
+        )
     }
 
     override val authRepository: AuthRepository by lazy {
-        AuthRepositoryImpl(preferencesStore, api, tokenHolder, profileRepository)
+        AuthRepositoryImpl(
+            prefs = preferencesStore,
+            secureStorage = secureSessionStorage,
+            api = api,
+            tokens = tokenHolder,
+            profileRepo = profileRepository,
+        )
     }
 
     override val analysisRepository: AnalysisRepository by lazy {

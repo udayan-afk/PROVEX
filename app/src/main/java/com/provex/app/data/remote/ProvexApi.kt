@@ -16,36 +16,67 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
-/** Contract for the planned Python FastAPI backend. */
+import com.provex.app.data.remote.dto.RegisterRequestDto
+import com.provex.app.data.remote.dto.RefreshTokenDto
+import com.provex.app.data.remote.dto.LogoutRequestDto
+import com.provex.app.data.remote.dto.UserDto
+
+/** Contract for the PROVEX Python FastAPI backend. */
 interface ProvexApi {
-    @POST("v1/auth/login")
+    @GET("api/v1/health")
+    suspend fun health(): Map<String, String>
+
+    @POST("api/v1/auth/login")
     suspend fun login(@Body body: CredentialsDto): AuthResponseDto
 
-    @POST("v1/auth/register")
-    suspend fun register(@Body body: CredentialsDto): AuthResponseDto
+    @POST("api/v1/auth/register")
+    suspend fun register(@Body body: RegisterRequestDto): AuthResponseDto
 
-    @POST("v1/analyses")
+    @POST("api/v1/auth/refresh")
+    suspend fun refreshToken(@Body body: RefreshTokenDto): AuthResponseDto
+
+    @POST("api/v1/auth/logout")
+    suspend fun logout(@Body body: LogoutRequestDto): Map<String, String>
+
+    @GET("api/v1/auth/me")
+    suspend fun getMe(): UserDto
+
+    @GET("api/v1/profile")
+    suspend fun getProfile(): com.provex.app.data.remote.dto.CareerProfileDto
+
+    @PUT("api/v1/profile")
+    suspend fun updateProfile(@Body body: com.provex.app.data.remote.dto.CareerProfileUpdateDto): com.provex.app.data.remote.dto.CareerProfileDto
+
+    @POST("api/v1/analyses")
     suspend fun submitJob(@Body body: JobSubmissionDto): AnalysisDto
 
-    @GET("v1/analyses/{id}")
+    @GET("api/v1/analyses/{id}")
     suspend fun getAnalysis(@Path("id") id: String): AnalysisDto
 
-    @GET("v1/analyses/{id}/evidence")
+    @GET("api/v1/analyses/{id}/evidence")
     suspend fun getEvidence(@Path("id") id: String): EvidenceResponseDto
 
-    @POST("v1/github/authorize")
+    @POST("api/v1/github/authorize")
     suspend fun beginGithubAuthorization(): GithubAuthorizationDto
 
-    @GET("v1/github/repositories")
-    suspend fun getRepositories(): List<RepositoryDto>
+    @GET("api/v1/github/status")
+    suspend fun getGithubStatus(): com.provex.app.data.remote.dto.GitHubStatusDto
 
-    @GET("v1/learning/recommendations")
+    @DELETE("api/v1/github/disconnect")
+    suspend fun disconnectGithub(): Map<String, String>
+
+    @GET("api/v1/github/repositories")
+    suspend fun getRepositories(): List<com.provex.app.data.remote.dto.GitHubRepoDto>
+
+    @GET("api/v1/learning/recommendations")
     suspend fun getRecommendations(@Query("skill") skills: List<String>): List<RecommendationDto>
 }
 

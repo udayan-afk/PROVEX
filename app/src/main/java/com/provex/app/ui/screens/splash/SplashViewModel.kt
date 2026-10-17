@@ -29,9 +29,13 @@ class SplashViewModel(
 
     private fun determineStartupDestination() {
         viewModelScope.launch {
-            // Briefly hold splash (1.5s) to display PROVEX identity and check session
+            // Briefly hold splash (1.5s) to display PROVEX identity and validate/restore session
             val startTime = System.currentTimeMillis()
-            val state = authRepository.authState.first()
+            
+            // Real session restoration: inspect encrypted storage, validate via /me, or rotate refresh token
+            val restoredResult = authRepository.restoreSession()
+            val state = restoredResult.getOrElse { authRepository.authState.first() }
+
             val elapsed = System.currentTimeMillis() - startTime
             val remaining = (1500L - elapsed).coerceAtLeast(0L)
             delay(remaining)

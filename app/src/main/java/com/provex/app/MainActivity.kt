@@ -57,6 +57,14 @@ import com.provex.app.ui.screens.home.HomeScreen
 import com.provex.app.ui.screens.home.HomeViewModel
 import com.provex.app.ui.screens.opportunity.ExtractionScreen
 import com.provex.app.ui.screens.opportunity.ExtractionViewModel
+import android.os.SystemClock
+import androidx.compose.material3.FabPosition
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.provex.app.ui.components.RoleAdvisorFloatingBubble
+import com.provex.app.ui.screens.explore.ExploreScreen
+import com.provex.app.ui.screens.explore.ExploreViewModel
 import com.provex.app.ui.screens.opportunity.OpportunitiesScreen
 import com.provex.app.ui.screens.opportunity.OpportunitiesViewModel
 import com.provex.app.ui.screens.profile.ProfileScreen
@@ -80,15 +88,45 @@ import com.provex.app.ui.theme.SurfaceWhite
 import com.provex.app.ui.theme.TextPrimary
 import com.provex.app.ui.theme.TextSecondary
 
+import android.content.Intent
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
 class MainActivity : ComponentActivity() {
+    private var appContainer: com.provex.app.di.AppContainer? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as ProvexApplication).container
+        appContainer = container
+
+        handleIntent(intent)
 
         setContent {
             ProvexTheme {
                 ProvexApp(container = container)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            appContainer?.githubRepository?.refresh()
+        }
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val data = intent?.data
+        if (data?.scheme == "provex" && data.host == "github-callback") {
+            lifecycleScope.launch {
+                appContainer?.githubRepository?.refresh()
             }
         }
     }
@@ -104,9 +142,28 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
     val authState by container.authRepository.authState.collectAsState(initial = null)
     val isSignedOut = authState == AuthState.SignedOut
 
+    // Retained at ProvexApp level to preserve chat conversation state across navigation
+    val roleAdvisorViewModel: OpportunitiesViewModel = viewModel {
+        OpportunitiesViewModel(
+            profileRepository = container.profileRepository,
+            jobDraftHolder = container.jobDraftHolder,
+        )
+    }
+
+    var lastAdvisorClickTime by remember { mutableLongStateOf(0L) }
+    val onOpenRoleAdvisor: () -> Unit = {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastAdvisorClickTime > 750L) {
+            lastAdvisorClickTime = now
+            navController.navigate(Destination.RoleAdvisor.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
     val showBottomBar = currentRoute in listOf(
         Destination.Home.route,
-        Destination.Opportunities.route,
+        Destination.Explore.route,
         Destination.History.route,
         Destination.Profile.route,
     )
@@ -117,7 +174,24 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
         Destination.Register.route,
     )
 
+    val hideFloatingBubbleRoutes = setOf(
+        Destination.Splash.route,
+        Destination.Login.route,
+        Destination.Register.route,
+        Destination.RoleAdvisor.route,
+    )
+    val showFloatingAdvisor = currentRoute !in hideFloatingBubbleRoutes && !isSignedOut
+
     Scaffold(
+        floatingActionButton = {
+            if (showFloatingAdvisor) {
+                RoleAdvisorFloatingBubble(
+                    onClick = onOpenRoleAdvisor,
+                    modifier = Modifier.padding(bottom = if (showBottomBar) 0.dp else 12.dp),
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End,
         topBar = {
             if (currentRoute !in unauthenticatedRoutes) {
                 TopAppBar(
@@ -269,12 +343,13 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                     onNavigateToRepositories = { navController.navigate(Destination.Repositories.route) },
                     onNavigateToComparison = { id -> navController.navigate(Destination.Comparison.createRoute(id)) },
                     onNavigateToProofPath = { id -> navController.navigate(Destination.ProofPath.createRoute(id)) },
-                    onNavigateToOpportunities = { navController.navigate(Destination.Opportunities.route) },
+                    onNavigateToOpportunities = { navController.navigate(Destination.Explore.route) },
+                    onNavigateToRoleAdvisor = onOpenRoleAdvisor,
                 )
             }
 
             composable(Destination.Profile.route) {
-                val vm = viewModel { ProfileViewModel(container.profileRepository) }
+                val vm = viewModel { ProfileViewModel(container.profileRepository, container.githubRepository) }
                 ProfileScreen(
                     viewModel = vm,
                     onNavigateToSettings = { navController.navigate(Destination.Settings.route) },
@@ -389,15 +464,63 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                 )
             }
 
-            composable(Destination.Opportunities.route) {
-                val vm = viewModel {
-                    OpportunitiesViewModel(
+            composable(Destination.Explore.route) {
+                val exploreVm = viewModel {
+                    ExploreViewModel(
                         profileRepository = container.profileRepository,
+                        insightsRepository = container.insightsRepository,
                         jobDraftHolder = container.jobDraftHolder,
                     )
                 }
+                ExploreScreen(
+                    viewModel = exploreVm,
+                    onNavigateToHome = {
+                        navController.navigate(Destination.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToRoleAdvisor = { prompt ->
+                        if (!prompt.isNullOrBlank()) {
+                            roleAdvisorViewModel.onSelectPrompt(prompt)
+                        }
+                        onOpenRoleAdvisor()
+                    },
+                )
+            }
+
+            composable(Destination.Opportunities.route) {
+                val exploreVm = viewModel {
+                    ExploreViewModel(
+                        profileRepository = container.profileRepository,
+                        insightsRepository = container.insightsRepository,
+                        jobDraftHolder = container.jobDraftHolder,
+                    )
+                }
+                ExploreScreen(
+                    viewModel = exploreVm,
+                    onNavigateToHome = {
+                        navController.navigate(Destination.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToRoleAdvisor = { prompt ->
+                        if (!prompt.isNullOrBlank()) {
+                            roleAdvisorViewModel.onSelectPrompt(prompt)
+                        }
+                        onOpenRoleAdvisor()
+                    },
+                )
+            }
+
+            composable(Destination.RoleAdvisor.route) {
                 OpportunitiesScreen(
-                    viewModel = vm,
+                    viewModel = roleAdvisorViewModel,
                     onNavigateToHome = {
                         navController.navigate(Destination.Home.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -407,6 +530,7 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                         }
                     },
                     onNavigateToProfile = { navController.navigate(Destination.Profile.route) },
+                    onBack = { navController.popBackStack() },
                 )
             }
 

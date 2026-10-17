@@ -9,9 +9,65 @@ import kotlinx.serialization.Serializable
 data class CredentialsDto(val email: String, val password: String)
 
 @Serializable
+data class RegisterRequestDto(
+    @SerialName("full_name") val fullName: String,
+    val email: String,
+    val password: String,
+)
+
+@Serializable
+data class UserDto(
+    val id: String,
+    val email: String,
+    @SerialName("full_name") val fullName: String,
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
 data class AuthResponseDto(
     @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("token_type") val tokenType: String = "bearer",
     val email: String? = null,
+    val user: UserDto? = null,
+)
+
+@Serializable
+data class RefreshTokenDto(
+    @SerialName("refresh_token") val refreshToken: String,
+)
+
+@Serializable
+data class LogoutRequestDto(
+    @SerialName("refresh_token") val refreshToken: String? = null,
+)
+
+@Serializable
+data class CareerProfileDto(
+    val id: String? = null,
+    @SerialName("user_id") val userId: String? = null,
+    val name: String? = null,
+    val email: String? = null,
+    val level: String = "",
+    @SerialName("target_role") val targetRole: String = "",
+    val location: String = "",
+    @SerialName("work_mode") val workMode: String = "NO_PREFERENCE",
+    val skills: List<String> = emptyList(),
+    val languages: List<String> = emptyList(),
+    val frameworks: List<String> = emptyList(),
+    val interests: List<String> = emptyList(),
+)
+
+@Serializable
+data class CareerProfileUpdateDto(
+    val level: String = "",
+    @SerialName("target_role") val targetRole: String = "",
+    val location: String = "",
+    @SerialName("work_mode") val workMode: String = "NO_PREFERENCE",
+    val skills: List<String> = emptyList(),
+    val languages: List<String> = emptyList(),
+    val frameworks: List<String> = emptyList(),
+    val interests: List<String> = emptyList(),
 )
 
 @Serializable
@@ -79,6 +135,29 @@ data class RepositoryDto(
 data class GithubAuthorizationDto(
     /** URL on github.com the user should open in the browser to authorize PROVEX. */
     @SerialName("authorization_url") val authorizationUrl: String,
+    val state: String? = null,
+)
+
+@Serializable
+data class GitHubStatusDto(
+    val connected: Boolean,
+    @SerialName("github_username") val githubUsername: String? = null,
+    @SerialName("connected_at") val connectedAt: String? = null,
+    val scopes: String? = null,
+)
+
+@Serializable
+data class GitHubRepoDto(
+    val id: Long,
+    val name: String,
+    @SerialName("full_name") val fullName: String,
+    val owner: String,
+    val description: String? = null,
+    val language: String? = null,
+    val private: Boolean = false,
+    @SerialName("html_url") val htmlUrl: String,
+    @SerialName("default_branch") val defaultBranch: String = "main",
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 @Serializable

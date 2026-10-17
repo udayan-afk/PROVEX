@@ -56,3 +56,19 @@ fun EvidenceResponseDto.toBundle(): EvidenceBundle = EvidenceBundle(
 
 fun RepositoryDto.toDomain(selected: Boolean) =
     GithubRepo(id, fullName, language, lastAnalyzedRevision, selected, isSample = false)
+
+fun com.provex.app.data.remote.dto.GitHubRepoDto.toDomain(selected: Boolean) = GithubRepo(
+    id = id.toString(),
+    fullName = fullName,
+    language = language,
+    lastAnalyzedRevision = null,
+    selected = selected,
+    isSample = false,
+    name = name,
+    owner = owner,
+    description = description,
+    isPrivate = private,
+    htmlUrl = htmlUrl,
+    defaultBranch = defaultBranch,
+    updatedAt = updatedAt,
+)

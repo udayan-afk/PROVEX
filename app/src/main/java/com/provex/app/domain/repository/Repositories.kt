@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface ProfileRepository {
     val profile: Flow<UserProfile>
-    suspend fun save(profile: UserProfile)
+    suspend fun save(profile: UserProfile): Result<Unit>
+    suspend fun syncFromRemote(): Result<UserProfile>
 }
 
 interface AuthRepository {
@@ -24,7 +25,8 @@ interface AuthRepository {
     /** False when this build has no backend URL; account auth is then unavailable. */
     val backendConfigured: Boolean
     suspend fun signIn(email: String, password: String, rememberMe: Boolean = true): Result<Unit>
-    suspend fun register(email: String, password: String): Result<Unit>
+    suspend fun register(fullName: String, email: String, password: String): Result<Unit>
+    suspend fun restoreSession(): Result<AuthState>
     suspend fun enterDemoMode(name: String? = null, email: String? = null)
     suspend fun setRememberMe(remember: Boolean)
     suspend fun signOut()
@@ -53,6 +55,7 @@ interface GithubRepository {
     suspend fun refresh()
     /** Returns a github.com URL to open in the browser, produced by the backend. */
     suspend fun beginAuthorization(): Result<String>
+    suspend fun disconnect(): Result<Unit>
     suspend fun toggleSelected(id: String)
     suspend fun setSampleEnabled(enabled: Boolean)
 }
