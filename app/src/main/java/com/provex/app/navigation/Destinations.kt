@@ -26,6 +26,7 @@ sealed class Destination(val route: String) {
     data object RoleAdvisor : Destination("role_advisor")
     data object Opportunities : Destination("opportunities")
     data object Settings : Destination("settings")
+    data object JobAnalyzer : Destination("job_analyzer")
 }
 
 data class BottomNavItem(

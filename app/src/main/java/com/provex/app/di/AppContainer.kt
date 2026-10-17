@@ -48,6 +48,7 @@ interface AppContainer {
     val insightsRepository: InsightsRepository
     val settingsRepository: SettingsRepository
     val jobDraftHolder: JobDraftHolder
+    val jobAnalyzerRepository: com.provex.app.domain.repository.JobAnalyzerRepository
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -85,6 +86,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         )
     }
 
+    override val githubRepository: GithubRepository by lazy {
+        GithubRepositoryImpl(preferencesStore, api, tokenHolder)
+    }
+
     override val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(
             prefs = preferencesStore,
@@ -92,6 +97,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             api = api,
             tokens = tokenHolder,
             profileRepo = profileRepository,
+            githubRepo = githubRepository,
         )
     }
 
@@ -105,10 +111,6 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         )
     }
 
-    override val githubRepository: GithubRepository by lazy {
-        GithubRepositoryImpl(preferencesStore, api)
-    }
-
     override val learningRepository: LearningRepository by lazy {
         LearningRepositoryImpl(preferencesStore)
     }
@@ -119,5 +121,9 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val settingsRepository: SettingsRepository by lazy {
         SettingsRepositoryImpl(preferencesStore, authRepository)
+    }
+
+    override val jobAnalyzerRepository: com.provex.app.domain.repository.JobAnalyzerRepository by lazy {
+        com.provex.app.data.repository.JobAnalyzerRepositoryImpl(api)
     }
 }

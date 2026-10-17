@@ -65,6 +65,8 @@ import androidx.compose.runtime.setValue
 import com.provex.app.ui.components.RoleAdvisorFloatingBubble
 import com.provex.app.ui.screens.explore.ExploreScreen
 import com.provex.app.ui.screens.explore.ExploreViewModel
+import com.provex.app.ui.screens.analyzer.JobSkillAnalyzerScreen
+import com.provex.app.ui.screens.analyzer.JobSkillAnalyzerViewModel
 import com.provex.app.ui.screens.opportunity.OpportunitiesScreen
 import com.provex.app.ui.screens.opportunity.OpportunitiesViewModel
 import com.provex.app.ui.screens.profile.ProfileScreen
@@ -472,8 +474,15 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                         jobDraftHolder = container.jobDraftHolder,
                     )
                 }
+                val analyzerVm = viewModel {
+                    JobSkillAnalyzerViewModel(
+                        repository = container.jobAnalyzerRepository,
+                        draftHolder = container.jobDraftHolder,
+                    )
+                }
                 ExploreScreen(
                     viewModel = exploreVm,
+                    analyzerViewModel = analyzerVm,
                     onNavigateToHome = {
                         navController.navigate(Destination.Home.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -499,8 +508,15 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                         jobDraftHolder = container.jobDraftHolder,
                     )
                 }
+                val analyzerVm = viewModel {
+                    JobSkillAnalyzerViewModel(
+                        repository = container.jobAnalyzerRepository,
+                        draftHolder = container.jobDraftHolder,
+                    )
+                }
                 ExploreScreen(
                     viewModel = exploreVm,
+                    analyzerViewModel = analyzerVm,
                     onNavigateToHome = {
                         navController.navigate(Destination.Home.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -514,6 +530,29 @@ fun ProvexApp(container: com.provex.app.di.AppContainer) {
                             roleAdvisorViewModel.onSelectPrompt(prompt)
                         }
                         onOpenRoleAdvisor()
+                    },
+                    onConnectGitHub = {
+                        navController.navigate(Destination.Profile.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+
+            composable(Destination.JobAnalyzer.route) {
+                val analyzerVm = viewModel {
+                    JobSkillAnalyzerViewModel(
+                        repository = container.jobAnalyzerRepository,
+                        draftHolder = container.jobDraftHolder,
+                    )
+                }
+                JobSkillAnalyzerScreen(
+                    viewModel = analyzerVm,
+                    onBack = { navController.popBackStack() },
+                    onConnectGitHub = {
+                        navController.navigate(Destination.Profile.route) {
+                            launchSingleTop = true
+                        }
                     },
                 )
             }

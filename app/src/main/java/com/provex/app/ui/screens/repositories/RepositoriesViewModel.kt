@@ -38,6 +38,7 @@ class RepositoriesViewModel(
                 _uiState.update { it.copy(githubState = state) }
             }
         }
+        onRefresh()
     }
 
     fun onConnectClicked() {

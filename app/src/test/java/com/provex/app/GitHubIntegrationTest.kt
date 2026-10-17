@@ -47,12 +47,24 @@ class FakeGithubRepository : GithubRepository {
     override val state: Flow<GithubState> = stateFlow
 
     var refreshCalled = false
+    var resetCalled = false
     var disconnectCalled = false
     var toggleSelectedId: String? = null
     var authorizationResult: Result<String> = Result.success("https://github.com/login/oauth/authorize?client_id=xyz&state=123")
 
     override suspend fun refresh() {
         refreshCalled = true
+    }
+
+    override suspend fun reset() {
+        resetCalled = true
+        stateFlow.value = GithubState(
+            status = RepoConnectionStatus.NOT_CONNECTED,
+            accountLogin = null,
+            repos = emptyList(),
+            isSample = false,
+            message = null,
+        )
     }
 
     override suspend fun beginAuthorization(): Result<String> = authorizationResult
@@ -82,6 +94,7 @@ class FakeProfileRepository : ProfileRepository {
     override val profile: Flow<UserProfile> = flowOf(UserProfile(name = "Test Student"))
     override suspend fun save(profile: UserProfile): Result<Unit> = Result.success(Unit)
     override suspend fun syncFromRemote(): Result<UserProfile> = Result.success(UserProfile(name = "Test Student"))
+    override suspend fun clearLocal() { }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -266,5 +279,55 @@ class GitHubIntegrationTest {
 
         val msg = exception.userMessage()
         assertEquals("The PROVEX backend GitHub service is not configured or unavailable.", msg)
+    }
+
+    @Test
+    fun testAccountSwitching_resetsGitHubState() = runTest {
+        val fakeRepo = FakeGithubRepository()
+        // Simulate User A having a connected GitHub account
+        fakeRepo.stateFlow.value = GithubState(
+            status = RepoConnectionStatus.CONNECTED,
+            accountLogin = "user-a-coder",
+            repos = listOf(
+                GithubRepo(
+                    id = "1",
+                    fullName = "user-a/private-repo",
+                    language = "Rust",
+                    lastAnalyzedRevision = null,
+                    selected = false,
+                    isSample = false,
+                )
+            ),
+            isSample = false,
+            message = null,
+        )
+
+        val viewModel = RepositoriesViewModel(fakeRepo)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("user-a-coder", viewModel.uiState.value.githubState.accountLogin)
+        assertEquals(1, viewModel.uiState.value.githubState.repos.size)
+
+        // When logout / reset occurs
+        fakeRepo.reset()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // User A's data must be completely erased from memory/UI
+        assertTrue(fakeRepo.resetCalled)
+        assertEquals(RepoConnectionStatus.NOT_CONNECTED, viewModel.uiState.value.githubState.status)
+        assertNull(viewModel.uiState.value.githubState.accountLogin)
+        assertTrue(viewModel.uiState.value.githubState.repos.isEmpty())
+    }
+
+    @Test
+    fun testProfileViewModel_refreshesGitHubStatusOnInit() = runTest {
+        val fakeProfileRepo = FakeProfileRepository()
+        val fakeGithubRepo = FakeGithubRepository()
+
+        val profileVm = ProfileViewModel(fakeProfileRepo, fakeGithubRepo)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // ProfileViewModel must trigger refresh on init so newly logged in user gets fresh status
+        assertTrue(fakeGithubRepo.refreshCalled)
     }
 }

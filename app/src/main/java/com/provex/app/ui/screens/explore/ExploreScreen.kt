@@ -47,12 +47,19 @@ import com.provex.app.ui.theme.TextMuted
 import com.provex.app.ui.theme.TextPrimary
 import com.provex.app.ui.theme.TextSecondary
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextAlign
+import com.provex.app.ui.screens.analyzer.JobSkillAnalyzerScreen
+import com.provex.app.ui.screens.analyzer.JobSkillAnalyzerViewModel
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExploreScreen(
     viewModel: ExploreViewModel,
+    analyzerViewModel: JobSkillAnalyzerViewModel? = null,
     onNavigateToHome: () -> Unit,
     onNavigateToRoleAdvisor: (String?) -> Unit,
+    onConnectGitHub: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -61,88 +68,148 @@ fun ExploreScreen(
             when (event) {
                 ExploreNavigationEvent.NavigateToHome -> onNavigateToHome()
                 is ExploreNavigationEvent.NavigateToRoleAdvisor -> onNavigateToRoleAdvisor(event.initialPrompt)
+                is ExploreNavigationEvent.PreloadAnalyzer -> {
+                    analyzerViewModel?.onDescriptionChanged(event.text)
+                }
             }
         }
     }
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Explore Opportunities",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = NavyPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Career tracks, role archetypes, and market expectations.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            NoticeBanner(
-                text = "Data Integrity Policy: PROVEX never fabricates employers, live vacancies, salaries, or deadlines. Browse curated career archetypes below to discover market expectations and compare your code evidence.",
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Category Filter Row
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Top Segmented Switcher
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Surface(
+                color = if (state.selectedTab == 0) NavyPrimary else SurfaceWhite,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (state.selectedTab == 0) NavyPrimary else MaterialTheme.colorScheme.outline),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { viewModel.onTabSelected(0) },
             ) {
-                items(state.availableCategories) { cat ->
-                    val selected = state.selectedCategory == cat
-                    Surface(
-                        color = if (selected) NavyPrimary else SurfaceWhite,
-                        shape = RoundedCornerShape(18.dp),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (selected) NavyPrimary else MaterialTheme.colorScheme.outline,
-                        ),
-                        modifier = Modifier.clickable { viewModel.onCategorySelected(cat) },
-                    ) {
-                        Text(
-                            text = cat,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (selected) SurfaceWhite else TextPrimary,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            ),
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        )
-                    }
-                }
+                Text(
+                    text = "⚡ Job Skill Analyzer",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = if (state.selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                        color = if (state.selectedTab == 0) SurfaceWhite else TextPrimary,
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 10.dp),
+                )
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = "CURATED ROLE ARCHETYPES (${state.roleArchetypes.size})",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                ),
-                color = TextSecondary,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                color = if (state.selectedTab == 1) NavyPrimary else SurfaceWhite,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, if (state.selectedTab == 1) NavyPrimary else MaterialTheme.colorScheme.outline),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { viewModel.onTabSelected(1) },
+            ) {
+                Text(
+                    text = "✦ Role Archetypes",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = if (state.selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                        color = if (state.selectedTab == 1) SurfaceWhite else TextPrimary,
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 10.dp),
+                )
+            }
         }
 
-        items(state.roleArchetypes, key = { it.id }) { card ->
-            ExploreRoleCard(
-                card = card,
-                onAnalyze = { viewModel.onAnalyzeRole(card.roleTitle, card.sampleJobDescription) },
-                onConsultAdvisor = { viewModel.onConsultAdvisor(card.roleTitle) },
+        if (state.selectedTab == 0 && analyzerViewModel != null) {
+            JobSkillAnalyzerScreen(
+                viewModel = analyzerViewModel,
+                modifier = Modifier.weight(1f),
+                onConnectGitHub = onConnectGitHub,
             )
-            Spacer(modifier = Modifier.height(10.dp))
-        }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Curated Role Archetypes",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                        color = NavyPrimary,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Career tracks, role expectations, and market skills to compare with code evidence.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    NoticeBanner(
+                        text = "Data Integrity Policy: PROVEX never fabricates employers, live vacancies, salaries, or deadlines. Browse curated career archetypes below to discover market expectations and compare your code evidence.",
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Category Filter Row
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.availableCategories) { cat ->
+                            val selected = state.selectedCategory == cat
+                            Surface(
+                                color = if (selected) NavyPrimary else SurfaceWhite,
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (selected) NavyPrimary else MaterialTheme.colorScheme.outline,
+                                ),
+                                modifier = Modifier.clickable { viewModel.onCategorySelected(cat) },
+                            ) {
+                                Text(
+                                    text = cat,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = if (selected) SurfaceWhite else TextPrimary,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Text(
+                        text = "ROLE ARCHETYPES (${state.roleArchetypes.size})",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                        ),
+                        color = TextSecondary,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                items(state.roleArchetypes, key = { it.id }) { card ->
+                    ExploreRoleCard(
+                        card = card,
+                        onAnalyze = { viewModel.onAnalyzeRole(card.roleTitle, card.sampleJobDescription) },
+                        onConsultAdvisor = { viewModel.onConsultAdvisor(card.roleTitle) },
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
         // Sample Opportunities Toggle Section
         item {
@@ -206,11 +273,13 @@ fun ExploreScreen(
             }
         }
 
-        item {
-            // Extra bottom spacing to ensure comfortable scrolling above the floating bubble & bottom bar
-            Spacer(modifier = Modifier.height(88.dp))
+            item {
+                // Extra bottom spacing to ensure comfortable scrolling above the floating bubble & bottom bar
+                Spacer(modifier = Modifier.height(88.dp))
+            }
         }
     }
+}
 }
 
 @OptIn(ExperimentalLayoutApi::class)

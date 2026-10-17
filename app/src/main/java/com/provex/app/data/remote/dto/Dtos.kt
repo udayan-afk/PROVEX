@@ -165,3 +165,84 @@ data class ResourceDto(val title: String, val url: String, val type: String)
 
 @Serializable
 data class RecommendationDto(val skill: String, val resources: List<ResourceDto> = emptyList())
+
+@Serializable
+data class JobAnalysisRequestDto(
+    val description: String? = null,
+    val url: String? = null,
+)
+
+@Serializable
+data class ExtractedSkillDto(
+    val name: String,
+    val category: String,
+    val importance: String = "Mentioned",
+    val evidence: String = "",
+    val confidence: Float? = null,
+)
+
+@Serializable
+data class ProfileComparisonDto(
+    @SerialName("user_has_profile") val userHasProfile: Boolean = false,
+    @SerialName("matching_skills") val matchingSkills: List<String> = emptyList(),
+    @SerialName("missing_skills") val missingSkills: List<String> = emptyList(),
+    @SerialName("next_skills_to_learn") val nextSkillsToLearn: List<String> = emptyList(),
+    @SerialName("match_percentage") val matchPercentage: Int = 0,
+    val disclaimer: String = "",
+)
+
+@Serializable
+data class JobAnalysisResponseDto(
+    @SerialName("job_title") val jobTitle: String? = null,
+    val company: String? = null,
+    @SerialName("source_type") val sourceType: String = "pasted_description",
+    @SerialName("source_url") val sourceUrl: String? = null,
+    val summary: String = "",
+    val skills: List<ExtractedSkillDto> = emptyList(),
+    @SerialName("skill_counts_by_category") val skillCountsByCategory: Map<String, Int> = emptyMap(),
+    val responsibilities: List<String> = emptyList(),
+    val qualifications: List<String> = emptyList(),
+    @SerialName("education_requirements") val educationRequirements: List<String> = emptyList(),
+    @SerialName("experience_requirements") val experienceRequirements: List<String> = emptyList(),
+    @SerialName("resume_keywords") val resumeKeywords: List<String> = emptyList(),
+    @SerialName("profile_comparison") val profileComparison: ProfileComparisonDto? = null,
+    @SerialName("github_matching") val githubMatching: GitHubMatchResultDto? = null,
+    @SerialName("extraction_method") val extractionMethod: String = "deterministic_rules",
+    val warnings: List<String> = emptyList(),
+)
+
+@Serializable
+data class SkillMatchItemDto(
+    val skill: String,
+    val category: String,
+    val importance: String = "Mentioned",
+    @SerialName("match_status") val matchStatus: String = "Not Found",
+    @SerialName("match_symbol") val matchSymbol: String = "○",
+    @SerialName("evidence_credit") val evidenceCredit: Float = 0.0f,
+    @SerialName("requirement_weight") val requirementWeight: Int = 1,
+    @SerialName("evidence_source") val evidenceSource: String? = null,
+    @SerialName("evidence_reason") val evidenceReason: String = "",
+)
+
+@Serializable
+data class GitHubMatchResultDto(
+    val connected: Boolean = false,
+    @SerialName("github_username") val githubUsername: String? = null,
+    @SerialName("repositories_analyzed") val repositoriesAnalyzed: Int = 0,
+    @SerialName("match_score") val matchScore: Float? = null,
+    @SerialName("score_label") val scoreLabel: String = "Repository Evidence Match",
+    @SerialName("strong_matches_count") val strongMatchesCount: Int = 0,
+    @SerialName("partial_matches_count") val partialMatchesCount: Int = 0,
+    @SerialName("not_found_count") val notFoundCount: Int = 0,
+    @SerialName("preferred_matches_count") val preferredMatchesCount: Int = 0,
+    val matches: List<SkillMatchItemDto> = emptyList(),
+    @SerialName("skills_to_strengthen") val skillsToStrengthen: List<String> = emptyList(),
+    val distribution: Map<String, Int> = emptyMap(),
+    val warnings: List<String> = emptyList(),
+    val disclaimer: String = "Missing repository evidence does not necessarily mean you lack the skill; it indicates no public code artifacts were found in analyzed repositories.",
+)
+
+@Serializable
+data class GitHubMatchRequestDto(
+    val skills: List<ExtractedSkillDto> = emptyList(),
+)

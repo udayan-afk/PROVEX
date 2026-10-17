@@ -222,47 +222,239 @@ async def test_github_failed_token_exchange(client, db):
         assert callback_resp.status_code == 502
         assert "failed" in callback_resp.json()["detail"].lower()
 
-def test_github_user_isolation(client, db):
-    # Register user A
+@pytest.mark.asyncio
+async def test_github_scenarios_a_b_c_multi_user_isolation(client, db):
+    """
+    Explicit regression test for Scenarios A, B, and C:
+    Scenario A: User A connects GitHub A -> User A connected, User B disconnected & cannot access A's repos.
+    Scenario B: User B connects GitHub B -> User B sees B's repos, User A sees A's repos.
+    Scenario C: User A disconnects -> User A disconnected, User B remains connected.
+    """
+    # Register User A
     reg_a = client.post("/api/v1/auth/register", json={
         "full_name": "User Alpha",
-        "email": "alpha@test.org",
+        "email": "scenario_alpha@test.org",
         "password": "Password123!",
     })
     token_a = reg_a.json()["access_token"]
     user_id_a = reg_a.json()["user"]["id"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
 
-    # Register user B
+    # Register User B
     reg_b = client.post("/api/v1/auth/register", json={
         "full_name": "User Beta",
-        "email": "beta@test.org",
+        "email": "scenario_beta@test.org",
         "password": "Password123!",
     })
     token_b = reg_b.json()["access_token"]
     user_id_b = reg_b.json()["user"]["id"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
 
-    # Connect User A
-    conn = GitHubConnection(
-        user_id=user_id_a,
-        github_user_id="111111",
-        github_username="alpha-coder",
-        encrypted_access_token=encrypt_secret("gho_alpha_secret"),
-        scope="read:user,repo",
-    )
-    db.add(conn)
-    db.commit()
+    # --- SCENARIO A ---
+    # 1. User A initiates OAuth
+    with patch.object(settings, "GITHUB_CLIENT_ID", "test_client_id"), \
+         patch.object(settings, "GITHUB_CLIENT_SECRET", "test_client_secret"):
+        auth_resp_a = client.post("/api/v1/github/authorize", headers=headers_a)
+        assert auth_resp_a.status_code == 200
+        state_a = auth_resp_a.json()["state"]
 
-    # User A status is connected
-    status_a = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token_a}"}).json()
+        # Ensure state is bound to user A
+        db_state_a = db.query(OAuthState).filter(OAuthState.state == state_a).first()
+        assert db_state_a is not None
+        assert db_state_a.user_id == user_id_a
+
+        # Mock token exchange and GitHub user profile for User A
+        token_resp_a = httpx.Response(200, json={
+            "access_token": "gho_user_a_token",
+            "scope": "read:user,repo",
+            "token_type": "bearer",
+        })
+        profile_resp_a = httpx.Response(200, json={
+            "id": 111111,
+            "login": "octocat-alpha",
+        })
+
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=token_resp_a), \
+             patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=profile_resp_a):
+            cb_a = client.get(f"/api/v1/github/callback?code=code_a&state={state_a}")
+            assert cb_a.status_code == 200
+            assert "octocat-alpha" in cb_a.text
+
+    # 2. User A's status reports connected
+    status_a = client.get("/api/v1/github/status", headers=headers_a).json()
     assert status_a["connected"] is True
-    assert status_a["github_username"] == "alpha-coder"
+    assert status_a["github_username"] == "octocat-alpha"
 
-    # User B status is disconnected
-    status_b = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token_b}"}).json()
+    # 3 & 4. User B's status reports disconnected
+    status_b = client.get("/api/v1/github/status", headers=headers_b).json()
     assert status_b["connected"] is False
     assert status_b["github_username"] is None
 
-    # User B cannot get repositories
-    repos_b = client.get("/api/v1/github/repositories", headers={"Authorization": f"Bearer {token_b}"})
+    # 5. User B's repository endpoint must not return User A's repositories
+    repos_b = client.get("/api/v1/github/repositories", headers=headers_b)
     assert repos_b.status_code == 404
+
+    # --- SCENARIO B ---
+    # 1. User B connects GitHub account B
+    with patch.object(settings, "GITHUB_CLIENT_ID", "test_client_id"), \
+         patch.object(settings, "GITHUB_CLIENT_SECRET", "test_client_secret"):
+        auth_resp_b = client.post("/api/v1/github/authorize", headers=headers_b)
+        assert auth_resp_b.status_code == 200
+        state_b = auth_resp_b.json()["state"]
+
+        assert state_b != state_a
+        db_state_b = db.query(OAuthState).filter(OAuthState.state == state_b).first()
+        assert db_state_b.user_id == user_id_b
+
+        token_resp_b = httpx.Response(200, json={
+            "access_token": "gho_user_b_token",
+            "scope": "read:user,repo",
+            "token_type": "bearer",
+        })
+        profile_resp_b = httpx.Response(200, json={
+            "id": 222222,
+            "login": "octocat-beta",
+        })
+
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=token_resp_b), \
+             patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=profile_resp_b):
+            cb_b = client.get(f"/api/v1/github/callback?code=code_b&state={state_b}")
+            assert cb_b.status_code == 200
+            assert "octocat-beta" in cb_b.text
+
+    # 2. User B sees account B and its repositories
+    status_b2 = client.get("/api/v1/github/status", headers=headers_b).json()
+    assert status_b2["connected"] is True
+    assert status_b2["github_username"] == "octocat-beta"
+
+    repos_mock_b = httpx.Response(200, json=[{
+        "id": 201,
+        "name": "beta-system",
+        "full_name": "octocat-beta/beta-system",
+        "owner": {"login": "octocat-beta"},
+        "description": "Beta repo",
+        "language": "Python",
+        "private": False,
+        "html_url": "https://github.com/octocat-beta/beta-system",
+        "default_branch": "main",
+        "updated_at": "2026-10-17T08:00:00Z",
+    }])
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=repos_mock_b):
+        b_repos = client.get("/api/v1/github/repositories", headers=headers_b).json()
+        assert len(b_repos) == 1
+        assert b_repos[0]["name"] == "beta-system"
+        assert b_repos[0]["owner"] == "octocat-beta"
+
+    # 3. User A continues to see account A and its repositories
+    status_a2 = client.get("/api/v1/github/status", headers=headers_a).json()
+    assert status_a2["connected"] is True
+    assert status_a2["github_username"] == "octocat-alpha"
+
+    repos_mock_a = httpx.Response(200, json=[{
+        "id": 101,
+        "name": "alpha-lib",
+        "full_name": "octocat-alpha/alpha-lib",
+        "owner": {"login": "octocat-alpha"},
+        "description": "Alpha repo",
+        "language": "Kotlin",
+        "private": False,
+        "html_url": "https://github.com/octocat-alpha/alpha-lib",
+        "default_branch": "main",
+        "updated_at": "2026-10-17T08:00:00Z",
+    }])
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=repos_mock_a):
+        a_repos = client.get("/api/v1/github/repositories", headers=headers_a).json()
+        assert len(a_repos) == 1
+        assert a_repos[0]["name"] == "alpha-lib"
+        assert a_repos[0]["owner"] == "octocat-alpha"
+
+    # --- SCENARIO C ---
+    # 1. User A disconnects GitHub
+    disc_a = client.delete("/api/v1/github/disconnect", headers=headers_a)
+    assert disc_a.status_code == 200
+
+    # 2. User A becomes disconnected
+    status_a3 = client.get("/api/v1/github/status", headers=headers_a).json()
+    assert status_a3["connected"] is False
+    assert status_a3["github_username"] is None
+    assert client.get("/api/v1/github/repositories", headers=headers_a).status_code == 404
+
+    # 3. User B's connection remains unchanged
+    status_b3 = client.get("/api/v1/github/status", headers=headers_b).json()
+    assert status_b3["connected"] is True
+    assert status_b3["github_username"] == "octocat-beta"
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=repos_mock_b):
+        b_repos_after = client.get("/api/v1/github/repositories", headers=headers_b).json()
+        assert len(b_repos_after) == 1
+        assert b_repos_after[0]["name"] == "beta-system"
+
+@pytest.mark.asyncio
+async def test_github_concurrent_oauth_states_different_users(client, db):
+    """
+    Ensure concurrent OAuth attempts from different PROVEX users cannot overwrite
+    or attach connections to the wrong account.
+    """
+    # User 1
+    u1 = client.post("/api/v1/auth/register", json={
+        "full_name": "Concurrent 1",
+        "email": "c1@test.org",
+        "password": "Password123!",
+    }).json()
+    token1 = u1["access_token"]
+    user_id_1 = u1["user"]["id"]
+
+    # User 2
+    u2 = client.post("/api/v1/auth/register", json={
+        "full_name": "Concurrent 2",
+        "email": "c2@test.org",
+        "password": "Password123!",
+    }).json()
+    token2 = u2["access_token"]
+    user_id_2 = u2["user"]["id"]
+
+    with patch.object(settings, "GITHUB_CLIENT_ID", "test_client_id"), \
+         patch.object(settings, "GITHUB_CLIENT_SECRET", "test_client_secret"):
+        # Both start auth concurrently
+        r1 = client.post("/api/v1/github/authorize", headers={"Authorization": f"Bearer {token1}"}).json()
+        r2 = client.post("/api/v1/github/authorize", headers={"Authorization": f"Bearer {token2}"}).json()
+
+        state1 = r1["state"]
+        state2 = r2["state"]
+        assert state1 != state2
+
+        # State 2 callback executes first
+        token_resp2 = httpx.Response(200, json={"access_token": "gho_tok2", "scope": "repo", "token_type": "bearer"})
+        prof_resp2 = httpx.Response(200, json={"id": 2002, "login": "gh-user-two"})
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=token_resp2), \
+             patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=prof_resp2):
+            cb2 = client.get(f"/api/v1/github/callback?code=code2&state={state2}")
+            assert cb2.status_code == 200
+
+        # User 2 is connected to gh-user-two
+        s2 = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token2}"}).json()
+        assert s2["connected"] is True
+        assert s2["github_username"] == "gh-user-two"
+
+        # User 1 is still NOT connected
+        s1 = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token1}"}).json()
+        assert s1["connected"] is False
+
+        # State 1 callback executes next
+        token_resp1 = httpx.Response(200, json={"access_token": "gho_tok1", "scope": "repo", "token_type": "bearer"})
+        prof_resp1 = httpx.Response(200, json={"id": 1001, "login": "gh-user-one"})
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=token_resp1), \
+             patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=prof_resp1):
+            cb1 = client.get(f"/api/v1/github/callback?code=code1&state={state1}")
+            assert cb1.status_code == 200
+
+        # Now User 1 is connected to gh-user-one
+        s1_after = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token1}"}).json()
+        assert s1_after["connected"] is True
+        assert s1_after["github_username"] == "gh-user-one"
+
+        # And User 2's connection was completely unaffected
+        s2_after = client.get("/api/v1/github/status", headers={"Authorization": f"Bearer {token2}"}).json()
+        assert s2_after["connected"] is True
+        assert s2_after["github_username"] == "gh-user-two"
+
 

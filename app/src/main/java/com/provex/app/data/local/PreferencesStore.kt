@@ -90,6 +90,12 @@ class PreferencesStore(private val context: Context) {
         it[Keys.completedCriteria] = if (key in cur) cur - key else cur + key
     }
 
+    suspend fun clearUserScopedData() = context.dataStore.edit {
+        it.remove(Keys.selectedRepos)
+        it.remove(Keys.sampleRepos)
+        it.remove(Keys.completedCriteria)
+    }
+
     suspend fun clearAll() {
         context.dataStore.edit { it.clear() }
     }

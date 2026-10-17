@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 data class ExploreUiState(
     val profile: UserProfile = UserProfile(),
+    val selectedTab: Int = 0, // 0 = Job Skill Analyzer, 1 = Role Archetypes
     val selectedCategory: String = "All",
     val availableCategories: List<String> = listOf("All", "Mobile", "Backend", "AI / ML", "Frontend", "Cloud & DevOps"),
     val roleArchetypes: List<AssistantOpportunityCard> = emptyList(),
@@ -30,6 +31,7 @@ data class ExploreUiState(
 sealed interface ExploreNavigationEvent {
     data object NavigateToHome : ExploreNavigationEvent
     data class NavigateToRoleAdvisor(val initialPrompt: String? = null) : ExploreNavigationEvent
+    data class PreloadAnalyzer(val text: String) : ExploreNavigationEvent
 }
 
 class ExploreViewModel(
@@ -61,6 +63,10 @@ class ExploreViewModel(
         }
     }
 
+    fun onTabSelected(tab: Int) {
+        _uiState.update { it.copy(selectedTab = tab) }
+    }
+
     fun onCategorySelected(category: String) {
         _uiState.update { it.copy(selectedCategory = category) }
         generateArchetypes(_uiState.value.profile, category)
@@ -81,8 +87,9 @@ class ExploreViewModel(
         """.trimIndent()
 
         jobDraftHolder?.setDraft(textToAnalyze)
+        _uiState.update { it.copy(selectedTab = 0) }
         viewModelScope.launch {
-            _navigationEvents.emit(ExploreNavigationEvent.NavigateToHome)
+            _navigationEvents.emit(ExploreNavigationEvent.PreloadAnalyzer(textToAnalyze))
         }
     }
 

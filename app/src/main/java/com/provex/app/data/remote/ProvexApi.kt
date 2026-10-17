@@ -78,6 +78,12 @@ interface ProvexApi {
 
     @GET("api/v1/learning/recommendations")
     suspend fun getRecommendations(@Query("skill") skills: List<String>): List<RecommendationDto>
+
+    @POST("api/v1/jobs/analyze")
+    suspend fun analyzeJob(@Body body: com.provex.app.data.remote.dto.JobAnalysisRequestDto): com.provex.app.data.remote.dto.JobAnalysisResponseDto
+
+    @POST("api/v1/jobs/match-github")
+    suspend fun matchJobGithub(@Body body: com.provex.app.data.remote.dto.GitHubMatchRequestDto): com.provex.app.data.remote.dto.GitHubMatchResultDto
 }
 
 /** Holds the PROVEX session token in memory only. */

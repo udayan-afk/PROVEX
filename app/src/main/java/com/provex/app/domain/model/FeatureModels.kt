@@ -109,3 +109,68 @@ sealed interface AuthState {
     data class Demo(val name: String? = null, val email: String? = null) : AuthState
     data class Account(val email: String) : AuthState
 }
+
+data class ExtractedSkillModel(
+    val name: String,
+    val category: String,
+    val importance: String = "Mentioned",
+    val evidence: String = "",
+    val confidence: Float? = null,
+)
+
+data class ProfileComparisonModel(
+    val userHasProfile: Boolean = false,
+    val matchingSkills: List<String> = emptyList(),
+    val missingSkills: List<String> = emptyList(),
+    val nextSkillsToLearn: List<String> = emptyList(),
+    val matchPercentage: Int = 0,
+    val disclaimer: String = "",
+)
+
+data class JobAnalysisResult(
+    val jobTitle: String = "Job Role",
+    val company: String? = null,
+    val sourceType: String = "pasted_description",
+    val sourceUrl: String? = null,
+    val summary: String = "",
+    val skills: List<ExtractedSkillModel> = emptyList(),
+    val skillCountsByCategory: Map<String, Int> = emptyMap(),
+    val responsibilities: List<String> = emptyList(),
+    val qualifications: List<String> = emptyList(),
+    val educationRequirements: List<String> = emptyList(),
+    val experienceRequirements: List<String> = emptyList(),
+    val resumeKeywords: List<String> = emptyList(),
+    val profileComparison: ProfileComparisonModel? = null,
+    val githubMatching: GitHubMatchResult? = null,
+    val extractionMethod: String = "deterministic_rules",
+    val warnings: List<String> = emptyList(),
+)
+
+data class SkillMatchItem(
+    val skill: String,
+    val category: String,
+    val importance: String = "Mentioned",
+    val matchStatus: String = "Not Found",
+    val matchSymbol: String = "○",
+    val evidenceCredit: Float = 0.0f,
+    val requirementWeight: Int = 1,
+    val evidenceSource: String? = null,
+    val evidenceReason: String = "",
+)
+
+data class GitHubMatchResult(
+    val connected: Boolean = false,
+    val githubUsername: String? = null,
+    val repositoriesAnalyzed: Int = 0,
+    val matchScore: Float? = null,
+    val scoreLabel: String = "Repository Evidence Match",
+    val strongMatchesCount: Int = 0,
+    val partialMatchesCount: Int = 0,
+    val notFoundCount: Int = 0,
+    val preferredMatchesCount: Int = 0,
+    val matches: List<SkillMatchItem> = emptyList(),
+    val skillsToStrengthen: List<String> = emptyList(),
+    val distribution: Map<String, Int> = emptyMap(),
+    val warnings: List<String> = emptyList(),
+    val disclaimer: String = "Missing repository evidence does not necessarily mean you lack the skill; it indicates no public code artifacts were found in analyzed repositories.",
+)

@@ -151,6 +151,10 @@ class ProfileRepositoryImpl(
             Result.failure(e)
         }
     }
+
+    override suspend fun clearLocal() {
+        dao.clear()
+    }
 }
 
 class AuthRepositoryImpl(
@@ -159,6 +163,7 @@ class AuthRepositoryImpl(
     private val api: ProvexApi?,
     private val tokens: SessionTokenHolder,
     private val profileRepo: ProfileRepository,
+    private val githubRepo: com.provex.app.domain.repository.GithubRepository? = null,
 ) : AuthRepository {
     override val authState: Flow<AuthState> = prefs.authState
     override val rememberMe: Flow<Boolean> = prefs.rememberMe
@@ -220,6 +225,7 @@ class AuthRepositoryImpl(
             secureStorage.clear()
             prefs.setAccount(email, remember = false)
         }
+        githubRepo?.refresh()
     }
 
     override suspend fun restoreSession(): Result<AuthState> {
@@ -243,6 +249,7 @@ class AuthRepositoryImpl(
             try {
                 val me = api.getMe()
                 prefs.setAccount(me.email, remember = true)
+                githubRepo?.refresh()
                 return Result.success(AuthState.Account(me.email))
             } catch (e: Exception) {
                 // Access token expired, attempt refresh
@@ -261,6 +268,9 @@ class AuthRepositoryImpl(
                 tokens.token = null
                 secureStorage.clear()
                 prefs.clearAuth()
+                prefs.clearUserScopedData()
+                profileRepo.clearLocal()
+                githubRepo?.reset()
                 return Result.success(AuthState.SignedOut)
             }
         }
@@ -271,6 +281,9 @@ class AuthRepositoryImpl(
     override suspend fun enterDemoMode(name: String?, email: String?) {
         tokens.token = null
         secureStorage.clear()
+        prefs.clearUserScopedData()
+        profileRepo.clearLocal()
+        githubRepo?.reset()
         prefs.setDemoMode(name, email)
         if (!name.isNullOrBlank()) {
             val current = profileRepo.profile.first()
@@ -289,6 +302,9 @@ class AuthRepositoryImpl(
         tokens.token = null
         secureStorage.clear()
         prefs.clearAuth()
+        prefs.clearUserScopedData()
+        profileRepo.clearLocal()
+        githubRepo?.reset()
 
         // Asynchronously notify backend to revoke refresh token
         api?.let { backend ->

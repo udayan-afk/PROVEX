@@ -31,9 +31,13 @@ class GitHubService:
 
         # Generate secure random state
         state_token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        now_utc = datetime.now(timezone.utc)
+        expires_at = now_utc + timedelta(minutes=10)
 
-        # Delete any existing states for this user
+        # Clean up any expired states in table to keep DB clean
+        db.execute(delete(OAuthState).where(OAuthState.expires_at < now_utc))
+
+        # Delete any existing states for this specific user
         db.execute(delete(OAuthState).where(OAuthState.user_id == user.id))
         
         # Save new state bound to user
@@ -46,12 +50,14 @@ class GitHubService:
         db.commit()
 
         # Build GitHub OAuth URL with minimum required scopes (read:user, repo)
+        # prompt=select_account forces account chooser so different PROVEX users can sign into their own GitHub accounts
         params = {
             "client_id": client_id,
             "redirect_uri": settings.GITHUB_CALLBACK_URL,
             "scope": "read:user,repo",
             "state": state_token,
             "allow_signup": "true",
+            "prompt": "select_account",
         }
         url = f"https://github.com/login/oauth/authorize?{urlencode(params)}"
         return GitHubAuthorizeResponse(authorization_url=url, state=state_token)
@@ -69,7 +75,10 @@ class GitHubService:
             )
 
         now = datetime.now(timezone.utc)
-        if stored_state.expires_at.replace(tzinfo=timezone.utc) < now:
+        exp = stored_state.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp < now:
             db.delete(stored_state)
             db.commit()
             raise HTTPException(
@@ -81,6 +90,14 @@ class GitHubService:
         # Consume single-use state token to prevent replay
         db.delete(stored_state)
         db.commit()
+
+        # Validate that the bound user still exists and is active
+        target_user = db.get(User, user_id)
+        if not target_user or not target_user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User associated with OAuth authorization no longer exists or is inactive.",
+            )
 
         # Exchange authorization code with GitHub API
         client_id = settings.GITHUB_CLIENT_ID.strip()

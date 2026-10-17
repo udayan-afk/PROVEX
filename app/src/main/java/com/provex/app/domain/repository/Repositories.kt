@@ -17,6 +17,7 @@ interface ProfileRepository {
     val profile: Flow<UserProfile>
     suspend fun save(profile: UserProfile): Result<Unit>
     suspend fun syncFromRemote(): Result<UserProfile>
+    suspend fun clearLocal()
 }
 
 interface AuthRepository {
@@ -53,6 +54,7 @@ interface AnalysisRepository {
 interface GithubRepository {
     val state: Flow<GithubState>
     suspend fun refresh()
+    suspend fun reset()
     /** Returns a github.com URL to open in the browser, produced by the backend. */
     suspend fun beginAuthorization(): Result<String>
     suspend fun disconnect(): Result<Unit>
@@ -87,4 +89,9 @@ interface SettingsRepository {
     suspend fun setNotifyProofLoop(enabled: Boolean)
     suspend fun setNotifyLearning(enabled: Boolean)
     suspend fun deleteAllLocalData()
+}
+
+interface JobAnalyzerRepository {
+    suspend fun analyzeJob(description: String?, url: String?): Result<com.provex.app.domain.model.JobAnalysisResult>
+    suspend fun matchJobGithub(skills: List<com.provex.app.domain.model.ExtractedSkillModel>): Result<com.provex.app.domain.model.GitHubMatchResult>
 }

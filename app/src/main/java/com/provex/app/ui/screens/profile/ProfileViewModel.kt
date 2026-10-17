@@ -73,6 +73,7 @@ class ProfileViewModel(
             }
         }
         syncProfile()
+        onRefreshGithub()
     }
 
     fun syncProfile() {
